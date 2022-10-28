@@ -1,6 +1,6 @@
 # movieparse
 
-movieparse is a lazy utility for looking up movie metadata from [TMDB](https://www.themoviedb.org/) using movie release year and title. It has both an
+`movieparse` is a lazy utility for fetching bulk movie data from [TMDB](https://www.themoviedb.org/) using movie release year and title. It has both an
 Python API and CLI.
 
 ## Installation
@@ -45,11 +45,11 @@ After parsing your files, take a look into mapping.csv:
 | /root_movie_dir/1999 The Martix | -1      | 0           |
 
 For some movies the correct TMDB Id cant be looked up due to bad spelling or old year-title combinations. For these movies
-you can add the `tmdb_id_man` manually:
+you can add the _tmdb_id_man_ manually:
 
 | disk_path                       | tmdb_id | tmdb_id_man |
 | ------------------------------- | ------- | ----------- |
-| /root_movie_dir/1999 The Martix | -1      | `603`       |
+| /root_movie_dir/1999 The Martix | -1      | _603_       |
 
 The next time you use the parser, that manual id will be looked up.
 
@@ -86,13 +86,12 @@ details.csv                         spoken_languages.csv
     m.title                             production_countries.name
     m.video                             tmdb_id
     m.vote_average
-    m.vote_count
-    m.belongs_to_collection.id
-    m.belongs_to_collection.name
-    m.belongs_to_collection.poster_path
-    m.belongs_to_collection.backdrop_path
-    tmdb_id
-    m.belongs_to_collection
+    m.vote_count                    collections.csv
+    tmdb_id                             collection.id
+                                        collection.name
+                                        collection.poster_path
+                                        collection.backdrop_path
+                                        tmdb_id
 
 cast.csv                            crew.csv
     cast.adult                          crew.adult
