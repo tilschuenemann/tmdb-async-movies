@@ -1,9 +1,9 @@
 from movieparse import __version__
-import pytest
 from movieparse.main import movieparse
+
 import numpy as np
+import pytest
 import pandas as pd
-import numpy as np
 
 NA_VALUE = 0
 MAPPING_COLS = set(["disk_path", "tmdb_id", "tmdb_id_man"])

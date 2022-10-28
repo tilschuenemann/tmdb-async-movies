@@ -60,7 +60,7 @@ class movieparse:
     def read_existing(self):
         self.spoken_langs = (
             self.crew
-        ) = self.cast = self.genres = self.prod_comp = self.prod_count = self.details = pd.DataFrame()
+        ) = self.cast = self.genres = self.prod_comp = self.prod_count = self.details = self.collect = pd.DataFrame()
 
         read_map = dict(
             {
@@ -71,6 +71,7 @@ class movieparse:
                 "production_companies": self.prod_comp,
                 "production_countries": self.prod_count,
                 "details": self.details,
+                "collections": self.collect,
             }
         )
         df_list = []
@@ -89,6 +90,7 @@ class movieparse:
             self.prod_comp,
             self.prod_count,
             self.details,
+            self.collect,
         ) = df_list
 
     def parse(self):
@@ -202,7 +204,7 @@ class movieparse:
 
             production_countries = (
                 production_companies
-            ) = genres = spoken_languages = cast = crew = details = pd.DataFrame()
+            ) = genres = spoken_languages = cast = crew = details = collection = pd.DataFrame()
             op_map = dict(
                 {
                     "production_countries": production_countries,
@@ -211,6 +213,7 @@ class movieparse:
                     "spoken_languages": spoken_languages,
                     "cast": cast,
                     "crew": crew,
+                    "collection": collection,
                 }
             )
 
@@ -221,15 +224,27 @@ class movieparse:
             for k, v in op_map.items():
                 if k in ["cast", "crew"]:
                     v = pd.json_normalize(response["credits"], record_path=k).add_prefix(f"{k}.")
+                elif k == "collection":
+                    try:
+                        if response["belongs_to_collection"] is None:
+                            response.pop("belongs_to_collection")
+                        else:
+                            collection = pd.json_normalize(
+                                response["belongs_to_collection"], errors="ignore"
+                            ).add_prefix(f"{k}.")
+                            response.pop("belongs_to_collection")
+                    except Exception as e:
+                        print("The error raised is: ", e)
                 else:
                     v = pd.json_normalize(response, record_path=k).add_prefix(f"{k}.")
                     response.pop(k)
                 v["tmdb_id"] = tmdb_id
                 df_store.append(v)
 
-            production_countries, production_companies, genres, spoken_languages, cast, crew = df_store
+            production_countries, production_companies, genres, spoken_languages, cast, crew, collection = df_store
 
             response.pop("credits")
+
             details = pd.json_normalize(
                 response,
                 errors="ignore",
@@ -252,6 +267,7 @@ class movieparse:
                 axis=0,
                 ignore_index=True,
             )
+            self.collect = pd.concat([self.collect, collection], axis=0, ignore_index=True)
 
     def write(self):
         write_map = dict(
@@ -263,6 +279,7 @@ class movieparse:
                 "genres.csv": self.genres,
                 "production_companies.csv": self.prod_comp,
                 "production_countries.csv": self.prod_count,
+                "collections.csv": self.collect,
             }
         )
 
