@@ -32,6 +32,7 @@ class movieparse:
         self.DEFAULT = 0
         self.NO_RESULT = -1
         self.NO_EXTRACT = -2
+        self.BAD_RESPONSE = -3
 
         # fallbacks
         if output_path is None:
@@ -50,7 +51,7 @@ class movieparse:
             self.cached_mapping["disk_path"] = self.cached_mapping["disk_path"].apply(lambda x: pathlib.Path(x))
 
             self.cached_metadata_ids = set(self.cached_mapping["tmdb_id"]) - set(
-                [self.DEFAULT, self.NO_RESULT, self.NO_EXTRACT]
+                [self.DEFAULT, self.NO_RESULT, self.NO_EXTRACT, self.BAD_RESPONSE]
             )
         else:
             self.cached_mapping = pd.DataFrame()
@@ -161,7 +162,10 @@ class movieparse:
                 if extract is not None:
                     year = extract.groups("disk_year")[0]
                     title = extract.groups("disk_year")[1]
-                    tmdb_id = self.get_id(title, year)
+                    try:
+                        tmdb_id = self.get_id(title, year)
+                    except:
+                        tmdb_id = self.BAD_RESPONSE
                 else:
                     tmdb_id = self.NO_EXTRACT
             elif pd.notnull(row["tmdb_id_man"]):
@@ -177,6 +181,7 @@ class movieparse:
 
         self.mapping["tmdb_id"] = tmdb_ids
         self.mapping["tmdb_id_man"] = tmdb_man_ids
+        self.mapping.to_csv((self.OUTPUT_PATH / "mapping.csv"), date_format="%Y-%m-%d", index=False)
 
     def update_lookup_ids(self):
         self.lookup_ids = (set(self.mapping["tmdb_id"]) | set(self.mapping["tmdb_id_man"])) - set(
@@ -186,7 +191,7 @@ class movieparse:
         if self.FORCE_ID_UPDATE is True:
             self.lookup_ids = set(self.mapping["tmdb_id"]) | set(self.mapping["tmdb_id_man"])
 
-        self.lookup_ids -= set([self.DEFAULT, self.NO_RESULT, self.NO_EXTRACT])
+        self.lookup_ids -= set([self.DEFAULT, self.NO_RESULT, self.NO_EXTRACT, self.BAD_RESPONSE])
 
     def get_metadata(self):
 
@@ -251,7 +256,6 @@ class movieparse:
     def write(self):
         write_map = dict(
             {
-                "mapping.csv": self.mapping,
                 "details.csv": self.details,
                 "spoken_languages.csv": self.spoken_langs,
                 "crew.csv": self.crew,
