@@ -112,10 +112,10 @@ class movieparse:
         self.write()
 
     def list_dirs(self) -> pd.DataFrame:
-        self.dirs = []
+        dirs = []
         for folder in self.ROOT_MOVIE_DIR.iterdir():
             if folder.is_dir():
-                self.dirs.append(folder)
+                dirs.append(folder)
 
         self.mapping = pd.DataFrame(
             {
@@ -124,7 +124,7 @@ class movieparse:
                 "disk_path": pd.Series(dtype=str),
             }
         )
-        self.mapping["disk_path"] = self.dirs
+        self.mapping["disk_path"] = dirs
 
     def update_mapping(self):
         self.mapping = pd.concat([self.cached_mapping, self.mapping], axis=0, ignore_index=True).drop_duplicates(
