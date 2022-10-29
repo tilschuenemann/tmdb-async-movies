@@ -48,7 +48,7 @@ class movieparse:
             else:
                 exit("please supply a TMDB_API_KEY!")
 
-        if self.PARSING_STYLE not in range(0, 3):
+        if self.PARSING_STYLE not in range(0, 2):
             exit("please supply a valid PARSING_STYLE!")
 
         # setup internals
