@@ -229,9 +229,9 @@ class movieparse:
                         if response["belongs_to_collection"] is None:
                             response.pop("belongs_to_collection")
                         else:
-                            collection = pd.json_normalize(
-                                response["belongs_to_collection"], errors="ignore"
-                            ).add_prefix(f"{k}.")
+                            v = pd.json_normalize(response["belongs_to_collection"], errors="ignore").add_prefix(
+                                f"{k}."
+                            )
                             response.pop("belongs_to_collection")
                     except Exception as e:
                         print("The error raised is: ", e)
