@@ -70,7 +70,11 @@ class movieparse:
 
     def read_existing(self):
 
-        self.cast = self.collect = self.crew = self.details = self.genres = self.prod_comp = self.prod_count = self.spoken_langs = pd.DataFrame()
+        self.cast = (
+            self.collect
+        ) = (
+            self.crew
+        ) = self.details = self.genres = self.prod_comp = self.prod_count = self.spoken_langs = pd.DataFrame()
 
         read_map = dict(
             {
@@ -203,21 +207,17 @@ class movieparse:
 
         for tmdb_id in tqdm(self.lookup_ids, desc="getting metadata"):
 
-            if tmdb_id is False or tmdb_id <= 0:
-                continue
+            cast = collect = crew = genres = prod_comp = prod_count = spoken_langs = pd.DataFrame()
 
-            production_countries = (
-                production_companies
-            ) = genres = spoken_languages = cast = crew = details = collection = pd.DataFrame()
             op_map = dict(
                 {
-                    "production_countries": production_countries,
-                    "production_companies": production_companies,
-                    "genres": genres,
-                    "spoken_languages": spoken_languages,
                     "cast": cast,
+                    "collection": collect,
                     "crew": crew,
-                    "collection": collection,
+                    "genres": genres,
+                    "production_companies": prod_comp,
+                    "production_countries": prod_count,
+                    "spoken_languages": spoken_langs,
                 }
             )
 
@@ -245,7 +245,7 @@ class movieparse:
                 v["tmdb_id"] = tmdb_id
                 df_store.append(v)
 
-            production_countries, production_companies, genres, spoken_languages, cast, crew, collection = df_store
+            cast = collect = crew = details = genres = prod_comp = prod_count = spoken_langs = df_store
 
             response.pop("credits")
 
@@ -255,23 +255,23 @@ class movieparse:
             ).add_prefix("m.")
             details["tmdb_id"] = details.pop("m.id")
 
-            # append new metadata
-            self.details = pd.concat([self.details, details], axis=0, ignore_index=True)
             self.cast = pd.concat([self.cast, cast], axis=0, ignore_index=True)
+            self.collect = pd.concat([self.collect, collection], axis=0, ignore_index=True)
             self.crew = pd.concat([self.crew, crew], axis=0, ignore_index=True)
+            self.details = pd.concat([self.details, details], axis=0, ignore_index=True)
             self.genres = pd.concat([self.genres, genres], axis=0, ignore_index=True)
             self.spoken_langs = pd.concat([self.spoken_langs, spoken_languages], axis=0, ignore_index=True)
-            self.prod_count = pd.concat(
-                [self.prod_count, production_countries],
-                axis=0,
-                ignore_index=True,
-            )
+            
             self.prod_comp = pd.concat(
                 [self.prod_comp, production_companies],
                 axis=0,
                 ignore_index=True,
             )
-            self.collect = pd.concat([self.collect, collection], axis=0, ignore_index=True)
+            self.prod_count = pd.concat(
+                [self.prod_count, production_countries],
+                axis=0,
+                ignore_index=True,
+            )
 
     def write(self):
         write_map = dict(
