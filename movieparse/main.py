@@ -56,17 +56,15 @@ class movieparse:
         self.read_existing()
 
     def setup_caches(self):
+        self.cached_mapping_ids = set()
+        self.cached_metadata_ids = set()
+        self.cached_mapping = pd.DataFrame()
+
         tmp_path = self.OUTPUT_PATH / "mapping.csv"
         if tmp_path.exists():
             self.cached_mapping = pd.read_csv(tmp_path)
             self.cached_mapping["disk_path"] = self.cached_mapping["disk_path"].apply(lambda x: pathlib.Path(x))
-
             self.cached_mapping_ids = set(self.cached_mapping["tmdb_id"])
-            self.cached_metadata_ids = set()
-        else:
-            self.cached_mapping = pd.DataFrame()
-            self.cached_mapping_ids = set()
-            self.cached_metadata_ids = set()
 
     def read_existing(self):
 
