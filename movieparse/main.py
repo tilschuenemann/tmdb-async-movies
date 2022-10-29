@@ -223,25 +223,25 @@ class movieparse:
             response = requests.get(url).json()
 
             df_store = []
-            for k, v in op_map.items():
+            for k, df in op_map.items():
                 if k in ["cast", "crew"]:
-                    v = pd.json_normalize(response["credits"], record_path=k).add_prefix(f"{k}.")
+                    df = pd.json_normalize(response["credits"], record_path=k).add_prefix(f"{k}.")
                 elif k == "collection":
                     try:
                         if response["belongs_to_collection"] is None:
                             response.pop("belongs_to_collection")
                         else:
-                            v = pd.json_normalize(response["belongs_to_collection"], errors="ignore").add_prefix(
+                            df = pd.json_normalize(response["belongs_to_collection"], errors="ignore").add_prefix(
                                 f"{k}."
                             )
                             response.pop("belongs_to_collection")
                     except Exception as e:
                         print("The error raised is: ", e)
                 else:
-                    v = pd.json_normalize(response, record_path=k).add_prefix(f"{k}.")
+                    df = pd.json_normalize(response, record_path=k).add_prefix(f"{k}.")
                     response.pop(k)
-                v["tmdb_id"] = tmdb_id
-                df_store.append(v)
+                df["tmdb_id"] = tmdb_id
+                df_store.append(df)
 
             cast = collect = crew = details = genres = prod_comp = prod_count = spoken_langs = df_store
 
