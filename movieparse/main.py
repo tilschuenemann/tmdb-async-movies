@@ -16,6 +16,7 @@ class movieparse:
         output_path: pathlib.Path,
         tmdb_api_key: str = None,
         force_id_update: bool = False,
+        force_metadata_update: bool = False,
         strict: bool = False,
         parsing_style: int = 0,
         language: str = "en_US",
@@ -24,6 +25,7 @@ class movieparse:
         self.OUTPUT_PATH = output_path
         self.TMDB_API_KEY = tmdb_api_key
         self.FORCE_ID_UPDATE = force_id_update
+        self.FORCE_METADATA_UPDATE = force_metadata_update
         self.STRICT = strict
         self.PARSING_STYLE = parsing_style
         self.LANGUAGE = language
@@ -59,11 +61,11 @@ class movieparse:
             self.cached_mapping = pd.read_csv(tmp_path)
             self.cached_mapping["disk_path"] = self.cached_mapping["disk_path"].apply(lambda x: pathlib.Path(x))
 
-            self.cached_metadata_ids = set(self.cached_mapping["tmdb_id"]) - set(
-                [self.DEFAULT, self.NO_RESULT, self.NO_EXTRACT, self.BAD_RESPONSE]
-            )
+            self.cached_mapping_ids = set(self.cached_mapping["tmdb_id"])
+            self.cached_metadata_ids = set()
         else:
             self.cached_mapping = pd.DataFrame()
+            self.cached_mapping_ids = set()
             self.cached_metadata_ids = set()
 
     def read_existing(self):
@@ -106,7 +108,7 @@ class movieparse:
         self.list_dirs()
         self.update_mapping()
         self.get_ids()
-        self.update_lookup_ids()
+        self.update_metadata_lookup_ids()
         self.get_metadata()
         self.write()
 
@@ -162,13 +164,11 @@ class movieparse:
             regex = re.compile(r"^(?P<disk_year>\d{4})\s{1}(?P<disk_title>.+)$")
         elif self.PARSING_STYLE == 1:
             regex = re.compile(r"^(?P<disk_year>\d{4})\s-\s(?P<disk_title>.+)$")
-        else:
-            exit("please supply a valid parsing style!")
-
+        
         for index, row in tqdm(self.mapping.iterrows(), desc="getting ids", total=len(self.mapping.index)):
             tmdb_man_id = tmdb_id = self.DEFAULT
 
-            if pd.isna(row["tmdb_id"]) or self.FORCE_ID_UPDATE or row["tmdb_id"] == self.DEFAULT:
+            if pd.isna(row["tmdb_id"]) or row["tmdb_id"] == self.DEFAULT or self.FORCE_ID_UPDATE:
                 extract = re.match(regex, row["disk_path"].name)
                 if extract is not None:
                     year = extract.groups("disk_year")[0]
@@ -179,13 +179,11 @@ class movieparse:
                         tmdb_id = self.BAD_RESPONSE
                 else:
                     tmdb_id = self.NO_EXTRACT
-            elif pd.notnull(row["tmdb_id_man"]):
-                tmdb_id = row["tmdb_id"]
-                tmdb_man_id = row["tmdb_id_man"]
             else:
                 tmdb_id = row["tmdb_id"]
 
-            path = row["disk_path"]
+            if pd.notnull(row["tmdb_id_man"]):
+                tmdb_man_id = row["tmdb_id_man"]
 
             tmdb_man_ids.append(tmdb_man_id)
             tmdb_ids.append(tmdb_id)
@@ -194,15 +192,13 @@ class movieparse:
         self.mapping["tmdb_id_man"] = tmdb_man_ids
         self.mapping.to_csv((self.OUTPUT_PATH / "mapping.csv"), date_format="%Y-%m-%d", index=False)
 
-    def update_lookup_ids(self):
-        self.lookup_ids = (set(self.mapping["tmdb_id"]) | set(self.mapping["tmdb_id_man"])) - set(
-            self.cached_metadata_ids
-        )
+    def update_metadata_lookup_ids(self):
+        self.metadata_lookup_ids = set(self.mapping["tmdb_id"]) | set(self.mapping["tmdb_id_man"])
 
-        if self.FORCE_ID_UPDATE is True:
-            self.lookup_ids = set(self.mapping["tmdb_id"]) | set(self.mapping["tmdb_id_man"])
+        if self.FORCE_METADATA_UPDATE is False:
+            self.metadata_lookup_ids -= set(self.cached_metadata_ids)
 
-        self.lookup_ids -= set([self.DEFAULT, self.NO_RESULT, self.NO_EXTRACT, self.BAD_RESPONSE])
+        self.metadata_lookup_ids -= set([self.DEFAULT, self.NO_RESULT, self.NO_EXTRACT, self.BAD_RESPONSE])
 
     def get_metadata(self):
 
