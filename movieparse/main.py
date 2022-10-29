@@ -243,30 +243,31 @@ class movieparse:
                 df["tmdb_id"] = tmdb_id
                 df_store.append(df)
 
-            cast = collect = crew = details = genres = prod_comp = prod_count = spoken_langs = df_store
+            cast, collect, crew, genres, prod_comp, prod_count, spoken_langs = df_store
 
             response.pop("credits")
-
             details = pd.json_normalize(
                 response,
                 errors="ignore",
             ).add_prefix("m.")
             details["tmdb_id"] = details.pop("m.id")
 
+            if cast.empty is False:
             self.cast = pd.concat([self.cast, cast], axis=0, ignore_index=True)
-            self.collect = pd.concat([self.collect, collection], axis=0, ignore_index=True)
+            self.collect = pd.concat([self.collect, collect], axis=0, ignore_index=True)
+            if crew.empty is False:
             self.crew = pd.concat([self.crew, crew], axis=0, ignore_index=True)
             self.details = pd.concat([self.details, details], axis=0, ignore_index=True)
             self.genres = pd.concat([self.genres, genres], axis=0, ignore_index=True)
-            self.spoken_langs = pd.concat([self.spoken_langs, spoken_languages], axis=0, ignore_index=True)
+            self.spoken_langs = pd.concat([self.spoken_langs, spoken_langs], axis=0, ignore_index=True)
             
             self.prod_comp = pd.concat(
-                [self.prod_comp, production_companies],
+                [self.prod_comp, prod_comp],
                 axis=0,
                 ignore_index=True,
             )
             self.prod_count = pd.concat(
-                [self.prod_count, production_countries],
+                [self.prod_count, prod_count],
                 axis=0,
                 ignore_index=True,
             )
