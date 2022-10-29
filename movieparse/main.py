@@ -69,20 +69,19 @@ class movieparse:
             self.cached_metadata_ids = set()
 
     def read_existing(self):
-        self.spoken_langs = (
-            self.crew
-        ) = self.cast = self.genres = self.prod_comp = self.prod_count = self.details = self.collect = pd.DataFrame()
+
+        self.cast = self.collect = self.crew = self.details = self.genres = self.prod_comp = self.prod_count = self.spoken_langs = pd.DataFrame()
 
         read_map = dict(
             {
-                "genres": self.genres,
-                "crew": self.crew,
                 "cast": self.cast,
-                "spoken_languages": self.spoken_langs,
+                "collections": self.collect,
+                "crew": self.crew,
+                "details": self.details,
+                "genres": self.genres,
                 "production_companies": self.prod_comp,
                 "production_countries": self.prod_count,
-                "details": self.details,
-                "collections": self.collect,
+                "spoken_languages": self.spoken_langs,
             }
         )
         df_list = []
@@ -94,14 +93,14 @@ class movieparse:
             df_list.append(df)
 
         (
-            self.genres,
-            self.crew,
             self.cast,
-            self.spoken_langs,
+            self.collect,
+            self.crew,
+            self.details,
+            self.genres,
             self.prod_comp,
             self.prod_count,
-            self.details,
-            self.collect,
+            self.spoken_langs,
         ) = df_list
 
     def parse(self):
