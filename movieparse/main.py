@@ -203,7 +203,7 @@ class movieparse:
 
     def get_metadata(self):
 
-        for tmdb_id in tqdm(self.lookup_ids, desc="getting metadata"):
+        for tmdb_id in tqdm(self.metadata_lookup_ids, desc="getting metadata"):
 
             cast = collect = crew = genres = prod_comp = prod_count = spoken_langs = pd.DataFrame()
 
