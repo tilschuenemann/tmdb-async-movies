@@ -34,11 +34,20 @@ class movieparse:
         self.NO_EXTRACT = -2
         self.BAD_RESPONSE = -3
 
-        # fallbacks
+        # fallbacks and error handling
         if output_path is None:
             self.OUTPUT_PATH = pathlib.Path(os.getcwd())
+        elif output_path.is_dir() is False:
+            exit("please supply a ROOT_MOVIE_DIR that is a directory!")
+
         if tmdb_api_key is None:
-            self.TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+            if os.getenv("TMDB_API_KEY") is not None:
+                self.TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+            else:
+                exit("please supply a TMDB_API_KEY!")
+
+        if self.PARSING_STYLE not in range(0, 3):
+            exit("please supply a valid PARSING_STYLE!")
 
         # setup internals
         self.setup_caches()
