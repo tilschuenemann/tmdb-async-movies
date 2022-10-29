@@ -294,4 +294,5 @@ class movieparse:
 
         for fname, df in write_map.items():
             tmp_path = self.OUTPUT_PATH / fname
-            df.to_csv(tmp_path, date_format="%Y-%m-%d", index=False)
+            if df.empty is False:
+                df.to_csv(tmp_path, date_format="%Y-%m-%d", index=False)
