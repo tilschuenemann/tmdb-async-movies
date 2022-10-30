@@ -167,7 +167,7 @@ class movieparse:
         for index, row in tqdm(self.mapping.iterrows(), desc="getting ids", total=len(self.mapping.index)):
             tmdb_id = self.__DEFAULT
 
-            if pd.isna(row["tmdb_id"]) or row["tmdb_id"] == self.__DEFAULT or self.FORCE_ID_UPDATE:
+            if row["tmdb_id"] == self.__DEFAULT or self.FORCE_ID_UPDATE:
                 extract = re.match(regex, row["disk_path"].name)
                 if extract is not None:
                     year = extract.groups("disk_year")[0]
