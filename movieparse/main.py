@@ -31,10 +31,10 @@ class movieparse:
         self.LANGUAGE = language
 
         # error codes
-        self.DEFAULT = 0
-        self.NO_RESULT = -1
-        self.NO_EXTRACT = -2
-        self.BAD_RESPONSE = -3
+        self.__DEFAULT = 0
+        self.__NO_RESULT = -1
+        self.__NO_EXTRACT = -2
+        self.__BAD_RESPONSE = -3
 
         # fallbacks and error handling
         if output_path is None:
@@ -52,10 +52,10 @@ class movieparse:
             exit("please supply a valid PARSING_STYLE!")
 
         # setup internals
-        self.setup_caches()
-        self.read_existing()
+        self.__setup_caches()
+        self.__read_existing()
 
-    def setup_caches(self):
+    def __setup_caches(self):
         self.cached_mapping_ids = set()
         self.cached_metadata_ids = set()
         self.cached_mapping = pd.DataFrame()
@@ -66,7 +66,8 @@ class movieparse:
             self.cached_mapping["disk_path"] = self.cached_mapping["disk_path"].apply(lambda x: pathlib.Path(x))
             self.cached_mapping_ids = set(self.cached_mapping["tmdb_id"])
 
-    def read_existing(self):
+    def __read_existing(self):
+        """Reads metadata CSVs if existing and appends tmdb_ids to cached_metadata_ids."""
 
         self.cast = (
             self.collect
@@ -106,14 +107,14 @@ class movieparse:
         ) = df_list
 
     def parse(self):
-        self.list_dirs()
-        self.update_mapping()
-        self.get_ids()
-        self.update_metadata_lookup_ids()
-        self.get_metadata()
+        self.__list_dirs()
+        self.__update_mapping()
+        self.__get_ids()
+        self.__update_metadata_lookup_ids()
+        self.__get_metadata()
         self.write()
 
-    def list_dirs(self) -> pd.DataFrame:
+    def __list_dirs(self) -> pd.DataFrame:
         dirs = []
         for folder in self.ROOT_MOVIE_DIR.iterdir():
             if folder.is_dir():
@@ -128,36 +129,36 @@ class movieparse:
         )
         self.mapping["disk_path"] = dirs
 
-    def update_mapping(self):
+    def __update_mapping(self):
         self.mapping = pd.concat([self.cached_mapping, self.mapping], axis=0, ignore_index=True).drop_duplicates(
             subset="disk_path", keep="first"
         )
 
-    def get_id(self, title: str, year: int = -1) -> int:
+    def __get_id(self, title: str, year: int = -1) -> int:
         """Creates API request with title and year. If that fails,
         creates another with just the title (if STRICT=False).
 
         Returns -1 if no results come back.
         """
-        if year != self.NO_RESULT:
+        if year != self.__NO_RESULT:
             url = f"https://api.themoviedb.org/3/search/movie/?api_key={self.TMDB_API_KEY}&query={title}&year={year}&include_adult=true"
             response = requests.get(url).json()
             try:
                 return response["results"][0]["id"]
             except IndexError:
                 if self.STRICT is False:
-                    return self.get_id(title=title, year=self.NO_RESULT)
+                    return self.__get_id(title=title, year=self.__NO_RESULT)
                 else:
-                    return self.NO_RESULT
+                    return self.__NO_RESULT
         else:
             url = f"https://api.themoviedb.org/3/search/movie/?api_key={self.TMDB_API_KEY}&query={title}&include_adult=true"
             response = requests.get(url).json()
             try:
                 return response["results"][0]["id"]
             except IndexError:
-                return self.NO_RESULT
+                return self.__NO_RESULT
 
-    def get_ids(self):
+    def __get_ids(self):
         tmdb_man_ids = []
         tmdb_ids = []
 
@@ -165,21 +166,21 @@ class movieparse:
             regex = re.compile(r"^(?P<disk_year>\d{4})\s{1}(?P<disk_title>.+)$")
         elif self.PARSING_STYLE == 1:
             regex = re.compile(r"^(?P<disk_year>\d{4})\s-\s(?P<disk_title>.+)$")
-        
-        for index, row in tqdm(self.mapping.iterrows(), desc="getting ids", total=len(self.mapping.index)):
-            tmdb_man_id = tmdb_id = self.DEFAULT
 
-            if pd.isna(row["tmdb_id"]) or row["tmdb_id"] == self.DEFAULT or self.FORCE_ID_UPDATE:
+        for index, row in tqdm(self.mapping.iterrows(), desc="getting ids", total=len(self.mapping.index)):
+            tmdb_man_id = tmdb_id = self.__DEFAULT
+
+            if pd.isna(row["tmdb_id"]) or row["tmdb_id"] == self.__DEFAULT or self.FORCE_ID_UPDATE:
                 extract = re.match(regex, row["disk_path"].name)
                 if extract is not None:
                     year = extract.groups("disk_year")[0]
                     title = extract.groups("disk_year")[1]
                     try:
-                        tmdb_id = self.get_id(title, year)
+                        tmdb_id = self.__get_id(title, year)
                     except:
-                        tmdb_id = self.BAD_RESPONSE
+                        tmdb_id = self.__BAD_RESPONSE
                 else:
-                    tmdb_id = self.NO_EXTRACT
+                    tmdb_id = self.__NO_RESULT
             else:
                 tmdb_id = row["tmdb_id"]
 
@@ -193,15 +194,15 @@ class movieparse:
         self.mapping["tmdb_id_man"] = tmdb_man_ids
         self.mapping.to_csv((self.OUTPUT_PATH / "mapping.csv"), date_format="%Y-%m-%d", index=False)
 
-    def update_metadata_lookup_ids(self):
+    def __update_metadata_lookup_ids(self):
         self.metadata_lookup_ids = set(self.mapping["tmdb_id"]) | set(self.mapping["tmdb_id_man"])
 
         if self.FORCE_METADATA_UPDATE is False:
             self.metadata_lookup_ids -= set(self.cached_metadata_ids)
 
-        self.metadata_lookup_ids -= set([self.DEFAULT, self.NO_RESULT, self.NO_EXTRACT, self.BAD_RESPONSE])
+        self.metadata_lookup_ids -= set([self.__DEFAULT, self.__NO_RESULT, self.__NO_RESULT, self.__BAD_RESPONSE])
 
-    def get_metadata(self):
+    def __get_metadata(self):
 
         for tmdb_id in tqdm(self.metadata_lookup_ids, desc="getting metadata"):
 
@@ -225,7 +226,7 @@ class movieparse:
             df_store = []
             for k, df in op_map.items():
                 if k in ["cast", "crew"]:
-                    df = pd.json_normalize(response["credits"], record_path=k).add_prefix(f"{k}.")
+                    df = pd.json_normalize(response["credits"], record_path=k).add_prefix(f"{k}.")                 
                 elif k == "collection":
                     try:
                         if response["belongs_to_collection"] is None:
@@ -253,14 +254,14 @@ class movieparse:
             details["tmdb_id"] = details.pop("m.id")
 
             if cast.empty is False:
-            self.cast = pd.concat([self.cast, cast], axis=0, ignore_index=True)
+                self.cast = pd.concat([self.cast, cast], axis=0, ignore_index=True)
             self.collect = pd.concat([self.collect, collect], axis=0, ignore_index=True)
             if crew.empty is False:
-            self.crew = pd.concat([self.crew, crew], axis=0, ignore_index=True)
+                self.crew = pd.concat([self.crew, crew], axis=0, ignore_index=True)
             self.details = pd.concat([self.details, details], axis=0, ignore_index=True)
             self.genres = pd.concat([self.genres, genres], axis=0, ignore_index=True)
             self.spoken_langs = pd.concat([self.spoken_langs, spoken_langs], axis=0, ignore_index=True)
-            
+
             self.prod_comp = pd.concat(
                 [self.prod_comp, prod_comp],
                 axis=0,
