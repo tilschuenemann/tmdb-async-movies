@@ -113,7 +113,7 @@ class movieparse:
         self._update_metadata_lookup_ids()
         self._get_metadata()
 
-    def _list_dirs(self) -> pd.DataFrame:
+    def _list_dirs(self):
         dirs = []
         for folder in self.ROOT_MOVIE_DIR.iterdir():
             if folder.is_dir():
@@ -261,7 +261,7 @@ class movieparse:
         for tmdb_id in tqdm(self.metadata_lookup_ids, desc="getting metadata"):
             url = f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.TMDB_API_KEY}&language={self.LANGUAGE}&append_to_response=credits"
             response = requests.get(url).json()
-            self._dissect_response(response, tmdb_id)
+            self._dissect_metadata_response(response, tmdb_id)
 
     def write(self):
         write_map = dict(
