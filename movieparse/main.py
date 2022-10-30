@@ -205,6 +205,7 @@ class movieparse:
 
         for tmdb_id in tqdm(self.metadata_lookup_ids, desc="getting metadata"):
 
+    def _dissect_metadata_response(self, response: dict, tmdb_id: int):
             cast = collect = crew = genres = prod_comp = prod_count = spoken_langs = pd.DataFrame()
 
             op_map = dict(
@@ -218,10 +219,6 @@ class movieparse:
                     "spoken_languages": spoken_langs,
                 }
             )
-
-            url = f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.TMDB_API_KEY}&language={self.LANGUAGE}&append_to_response=credits"
-            response = requests.get(url).json()
-
             df_store = []
             for k, df in op_map.items():
                 if k in ["cast", "crew"]:
@@ -271,6 +268,13 @@ class movieparse:
                 axis=0,
                 ignore_index=True,
             )
+
+    def _get_metadata(self):
+
+        for tmdb_id in tqdm(self.metadata_lookup_ids, desc="getting metadata"):
+            url = f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.TMDB_API_KEY}&language={self.LANGUAGE}&append_to_response=credits"
+            response = requests.get(url).json()
+            self._dissect_response(response, tmdb_id)
 
     def write(self):
         write_map = dict(
