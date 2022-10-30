@@ -195,68 +195,66 @@ class movieparse:
         self.metadata_lookup_ids -= set([self.__DEFAULT, self.__NO_RESULT, self.__NO_EXTRACT, self.__BAD_RESPONSE])
 
     def _dissect_metadata_response(self, response: dict, tmdb_id: int):
-            cast = collect = crew = genres = prod_comp = prod_count = spoken_langs = pd.DataFrame()
+        cast = collect = crew = genres = prod_comp = prod_count = spoken_langs = pd.DataFrame()
 
-            op_map = dict(
-                {
-                    "cast": cast,
-                    "collection": collect,
-                    "crew": crew,
-                    "genres": genres,
-                    "production_companies": prod_comp,
-                    "production_countries": prod_count,
-                    "spoken_languages": spoken_langs,
-                }
-            )
-            df_store = []
-            for k, df in op_map.items():
-                if k in ["cast", "crew"]:
-                    df = pd.json_normalize(response["credits"], record_path=k).add_prefix(f"{k}.")                 
-                elif k == "collection":
-                    try:
-                        if response["belongs_to_collection"] is None:
-                            response.pop("belongs_to_collection")
-                        else:
-                            df = pd.json_normalize(response["belongs_to_collection"], errors="ignore").add_prefix(
-                                f"{k}."
-                            )
-                            response.pop("belongs_to_collection")
-                    except Exception as e:
-                        print("The error raised is: ", e)
-                else:
-                    df = pd.json_normalize(response, record_path=k).add_prefix(f"{k}.")
-                    response.pop(k)
-                df["tmdb_id"] = tmdb_id
-                df_store.append(df)
+        op_map = dict(
+            {
+                "cast": cast,
+                "collection": collect,
+                "crew": crew,
+                "genres": genres,
+                "production_companies": prod_comp,
+                "production_countries": prod_count,
+                "spoken_languages": spoken_langs,
+            }
+        )
+        df_store = []
+        for k, df in op_map.items():
+            if k in ["cast", "crew"]:
+                df = pd.json_normalize(response["credits"], record_path=k).add_prefix(f"{k}.")
+            elif k == "collection":
+                try:
+                    if response["belongs_to_collection"] is None:
+                        response.pop("belongs_to_collection")
+                    else:
+                        df = pd.json_normalize(response["belongs_to_collection"], errors="ignore").add_prefix(f"{k}.")
+                        response.pop("belongs_to_collection")
+                except Exception as e:
+                    print("The error raised is: ", e)
+            else:
+                df = pd.json_normalize(response, record_path=k).add_prefix(f"{k}.")
+                response.pop(k)
+            df["tmdb_id"] = tmdb_id
+            df_store.append(df)
 
-            cast, collect, crew, genres, prod_comp, prod_count, spoken_langs = df_store
+        cast, collect, crew, genres, prod_comp, prod_count, spoken_langs = df_store
 
-            response.pop("credits")
-            details = pd.json_normalize(
-                response,
-                errors="ignore",
-            ).add_prefix("m.")
-            details["tmdb_id"] = details.pop("m.id")
+        response.pop("credits")
+        details = pd.json_normalize(
+            response,
+            errors="ignore",
+        ).add_prefix("m.")
+        details["tmdb_id"] = details.pop("m.id")
 
-            if cast.empty is False:
-                self.cast = pd.concat([self.cast, cast], axis=0, ignore_index=True)
-            self.collect = pd.concat([self.collect, collect], axis=0, ignore_index=True)
-            if crew.empty is False:
-                self.crew = pd.concat([self.crew, crew], axis=0, ignore_index=True)
-            self.details = pd.concat([self.details, details], axis=0, ignore_index=True)
-            self.genres = pd.concat([self.genres, genres], axis=0, ignore_index=True)
-            self.spoken_langs = pd.concat([self.spoken_langs, spoken_langs], axis=0, ignore_index=True)
+        if cast.empty is False:
+            self.cast = pd.concat([self.cast, cast], axis=0, ignore_index=True)
+        self.collect = pd.concat([self.collect, collect], axis=0, ignore_index=True)
+        if crew.empty is False:
+            self.crew = pd.concat([self.crew, crew], axis=0, ignore_index=True)
+        self.details = pd.concat([self.details, details], axis=0, ignore_index=True)
+        self.genres = pd.concat([self.genres, genres], axis=0, ignore_index=True)
+        self.spoken_langs = pd.concat([self.spoken_langs, spoken_langs], axis=0, ignore_index=True)
 
-            self.prod_comp = pd.concat(
-                [self.prod_comp, prod_comp],
-                axis=0,
-                ignore_index=True,
-            )
-            self.prod_count = pd.concat(
-                [self.prod_count, prod_count],
-                axis=0,
-                ignore_index=True,
-            )
+        self.prod_comp = pd.concat(
+            [self.prod_comp, prod_comp],
+            axis=0,
+            ignore_index=True,
+        )
+        self.prod_count = pd.concat(
+            [self.prod_count, prod_count],
+            axis=0,
+            ignore_index=True,
+        )
 
     def _get_metadata(self):
 
