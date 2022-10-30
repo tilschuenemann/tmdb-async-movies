@@ -121,12 +121,11 @@ class movieparse:
 
         self.mapping = pd.DataFrame(
             {
-                "tmdb_id": pd.Series(dtype=int),
-                "tmdb_id_man": pd.Series(dtype=int),
-                "disk_path": pd.Series(dtype=str),
+                "tmdb_id": self.__DEFAULT,
+                "tmdb_id_man": self.__DEFAULT,
+                "disk_path": dirs,
             }
         )
-        self.mapping["disk_path"] = dirs
 
     def _update_mapping(self):
         self.mapping = pd.concat([self.cached_mapping, self.mapping], axis=0, ignore_index=True).drop_duplicates(
@@ -158,7 +157,6 @@ class movieparse:
                 return self.__NO_RESULT
 
     def _get_ids(self):
-        tmdb_man_ids = []
         tmdb_ids = []
 
         if self.PARSING_STYLE == 0:
@@ -167,7 +165,7 @@ class movieparse:
             regex = re.compile(r"^(?P<disk_year>\d{4})\s-\s(?P<disk_title>.+)$")
 
         for index, row in tqdm(self.mapping.iterrows(), desc="getting ids", total=len(self.mapping.index)):
-            tmdb_man_id = tmdb_id = self.__DEFAULT
+            tmdb_id = self.__DEFAULT
 
             if pd.isna(row["tmdb_id"]) or row["tmdb_id"] == self.__DEFAULT or self.FORCE_ID_UPDATE:
                 extract = re.match(regex, row["disk_path"].name)
@@ -179,18 +177,13 @@ class movieparse:
                     except:
                         tmdb_id = self.__BAD_RESPONSE
                 else:
-                    tmdb_id = self.__NO_RESULT
+                    tmdb_id = self.__NO_EXTRACT
             else:
                 tmdb_id = row["tmdb_id"]
 
-            if pd.notnull(row["tmdb_id_man"]):
-                tmdb_man_id = row["tmdb_id_man"]
-
-            tmdb_man_ids.append(tmdb_man_id)
             tmdb_ids.append(tmdb_id)
 
         self.mapping["tmdb_id"] = tmdb_ids
-        self.mapping["tmdb_id_man"] = tmdb_man_ids
         self.mapping.to_csv((self.OUTPUT_PATH / "mapping.csv"), date_format="%Y-%m-%d", index=False)
 
     def _update_metadata_lookup_ids(self):
@@ -199,11 +192,7 @@ class movieparse:
         if self.FORCE_METADATA_UPDATE is False:
             self.metadata_lookup_ids -= set(self.cached_metadata_ids)
 
-        self.metadata_lookup_ids -= set([self.__DEFAULT, self.__NO_RESULT, self.__NO_RESULT, self.__BAD_RESPONSE])
-
-    def _get_metadata(self):
-
-        for tmdb_id in tqdm(self.metadata_lookup_ids, desc="getting metadata"):
+        self.metadata_lookup_ids -= set([self.__DEFAULT, self.__NO_RESULT, self.__NO_EXTRACT, self.__BAD_RESPONSE])
 
     def _dissect_metadata_response(self, response: dict, tmdb_id: int):
             cast = collect = crew = genres = prod_comp = prod_count = spoken_langs = pd.DataFrame()
