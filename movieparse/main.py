@@ -57,7 +57,6 @@ class movieparse:
 
     def _setup_caches(self):
         self.cached_mapping_ids = set()
-        self.cached_metadata_ids = set()
         self.cached_mapping = pd.DataFrame()
 
         tmp_path = self.OUTPUT_PATH / "mapping.csv"
@@ -69,6 +68,7 @@ class movieparse:
     def _read_existing(self):
         """Reads metadata CSVs if existing and appends tmdb_ids to cached_metadata_ids."""
 
+        self.cached_metadata_ids = set()
         self.cast = (
             self.collect
         ) = (
