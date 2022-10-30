@@ -12,7 +12,7 @@ import requests
 class movieparse:
     def __init__(
         self,
-        root_movie_dir: str,
+        root_movie_dir: pathlib.Path,
         output_path: pathlib.Path,
         tmdb_api_key: str = None,
         force_id_update: bool = False,
