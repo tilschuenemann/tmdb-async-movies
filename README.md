@@ -6,10 +6,11 @@ Python API and CLI.
 ## Installation & Requirements
 
 ```bash
-coming to pip soon.
+pip install movieparse
 ```
 
 You'll need to have a TMDB API key in order to make API requests. Either specify it explicitly or add it as environment variable:
+
 ```bash
 export TMDB_API_KEY="your_api_key_here"
 ```
@@ -35,6 +36,7 @@ movieparse root_movie_dir/
 ```
 
 Additional options:
+
 ```bash
 movieparse -h
 usage: tmdb_parser [-h] [--tmdb_api_key [TMDB_API_KEY]] [--parsing_style [{0,1}]] [--output_path [OUTPUT_PATH]] [--lax] [--language [LANGUAGE]] [--eager] root_movie_dir
