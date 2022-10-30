@@ -1,8 +1,9 @@
 [tool.poetry]
 name = "movieparse"
 version = "0.1.0"
-description = ""
+description = "movieparse is a lazy utility for fetching bulk movie data from TMDB."
 authors = ["schuenemann"]
+
 
 [tool.poetry.dependencies]
 python = "^3.10"
