@@ -3,9 +3,16 @@
 `movieparse` is a lazy utility for fetching bulk movie data from [TMDB](https://www.themoviedb.org/) using movie release year and title. It has both an
 Python API and CLI.
 
-## Installation
+## Installation & Requirements
 
-tbd.
+```bash
+coming to pip soon.
+```
+
+You'll need to have a TMDB API key in order to make API requests. Either specify it explicitly or add it as environment variable:
+```bash
+export TMDB_API_KEY="your_api_key_here"
+```
 
 ## Usage
 
@@ -21,7 +28,33 @@ root_movie_dir/
         fightclub.srt
 ```
 
-Contents inside the subfolder aren't taken into consideration.
+Contents inside the subfolder aren't taken into consideration. Running without further options:
+
+```bash
+movieparse root_movie_dir/
+```
+
+Additional options:
+```bash
+movieparse -h
+usage: tmdb_parser [-h] [--tmdb_api_key [TMDB_API_KEY]] [--parsing_style [{0,1}]] [--output_path [OUTPUT_PATH]] [--lax] [--language [LANGUAGE]] [--eager] root_movie_dir
+
+positional arguments:
+  root_movie_dir        Directory containing your movie folders.
+
+options:
+  -h, --help            show this help message and exit
+  --tmdb_api_key [TMDB_API_KEY]
+                        TMDB API key. If not supplied here, environment variable TMDB_API_KEY will be read.
+  --parsing_style [{0,1}]
+                        Naming convention used - see documentation for examples.
+  --output_path [OUTPUT_PATH]
+                        Path to directory where output CSVs get written to. Defaults to current directory.
+  --lax                 Use if TMDB ID lookup should fall back to title only (instead of year+title). Results may not be as accurate.
+  --language [LANGUAGE]
+                        ISO-639-1 language shortcode for specifying result language. Defaults to en_US.
+  --eager               Using this will refetch all IDs and metadata without caching anything.
+```
 
 ## Features
 
