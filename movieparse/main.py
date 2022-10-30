@@ -52,10 +52,10 @@ class movieparse:
             exit("please supply a valid PARSING_STYLE!")
 
         # setup internals
-        self.__setup_caches()
-        self.__read_existing()
+        self._setup_caches()
+        self._read_existing()
 
-    def __setup_caches(self):
+    def _setup_caches(self):
         self.cached_mapping_ids = set()
         self.cached_metadata_ids = set()
         self.cached_mapping = pd.DataFrame()
@@ -66,7 +66,7 @@ class movieparse:
             self.cached_mapping["disk_path"] = self.cached_mapping["disk_path"].apply(lambda x: pathlib.Path(x))
             self.cached_mapping_ids = set(self.cached_mapping["tmdb_id"])
 
-    def __read_existing(self):
+    def _read_existing(self):
         """Reads metadata CSVs if existing and appends tmdb_ids to cached_metadata_ids."""
 
         self.cast = (
@@ -107,14 +107,13 @@ class movieparse:
         ) = df_list
 
     def parse(self):
-        self.__list_dirs()
-        self.__update_mapping()
-        self.__get_ids()
-        self.__update_metadata_lookup_ids()
-        self.__get_metadata()
-        self.write()
+        self._list_dirs()
+        self._update_mapping()
+        self._get_ids()
+        self._update_metadata_lookup_ids()
+        self._get_metadata()
 
-    def __list_dirs(self) -> pd.DataFrame:
+    def _list_dirs(self) -> pd.DataFrame:
         dirs = []
         for folder in self.ROOT_MOVIE_DIR.iterdir():
             if folder.is_dir():
@@ -129,12 +128,12 @@ class movieparse:
         )
         self.mapping["disk_path"] = dirs
 
-    def __update_mapping(self):
+    def _update_mapping(self):
         self.mapping = pd.concat([self.cached_mapping, self.mapping], axis=0, ignore_index=True).drop_duplicates(
             subset="disk_path", keep="first"
         )
 
-    def __get_id(self, title: str, year: int = -1) -> int:
+    def _get_id(self, title: str, year: int = -1) -> int:
         """Creates API request with title and year. If that fails,
         creates another with just the title (if STRICT=False).
 
@@ -147,7 +146,7 @@ class movieparse:
                 return response["results"][0]["id"]
             except IndexError:
                 if self.STRICT is False:
-                    return self.__get_id(title=title, year=self.__NO_RESULT)
+                    return self._get_id(title=title, year=self.__NO_RESULT)
                 else:
                     return self.__NO_RESULT
         else:
@@ -158,7 +157,7 @@ class movieparse:
             except IndexError:
                 return self.__NO_RESULT
 
-    def __get_ids(self):
+    def _get_ids(self):
         tmdb_man_ids = []
         tmdb_ids = []
 
@@ -176,7 +175,7 @@ class movieparse:
                     year = extract.groups("disk_year")[0]
                     title = extract.groups("disk_year")[1]
                     try:
-                        tmdb_id = self.__get_id(title, year)
+                        tmdb_id = self._get_id(title, year)
                     except:
                         tmdb_id = self.__BAD_RESPONSE
                 else:
@@ -194,7 +193,7 @@ class movieparse:
         self.mapping["tmdb_id_man"] = tmdb_man_ids
         self.mapping.to_csv((self.OUTPUT_PATH / "mapping.csv"), date_format="%Y-%m-%d", index=False)
 
-    def __update_metadata_lookup_ids(self):
+    def _update_metadata_lookup_ids(self):
         self.metadata_lookup_ids = set(self.mapping["tmdb_id"]) | set(self.mapping["tmdb_id_man"])
 
         if self.FORCE_METADATA_UPDATE is False:
@@ -202,7 +201,7 @@ class movieparse:
 
         self.metadata_lookup_ids -= set([self.__DEFAULT, self.__NO_RESULT, self.__NO_RESULT, self.__BAD_RESPONSE])
 
-    def __get_metadata(self):
+    def _get_metadata(self):
 
         for tmdb_id in tqdm(self.metadata_lookup_ids, desc="getting metadata"):
 

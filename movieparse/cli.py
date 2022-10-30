@@ -27,6 +27,7 @@ def main():
     )
 
     m.parse()
+    m.write()
 
 
 if __name__ == "__main__":
