@@ -1,0 +1,30 @@
+name: Tests
+
+on:
+  - push
+  - pull_request
+
+env:
+  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+  POETRY_TMDB_API_KEY: ${{ secrets.POETRY_TMDB_API_KEY }}
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        pyv: ["3.10", "3.11"]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install poetry
+        run: pipx install poetry
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.pyv }}
+          cache: "poetry"
+      - run: |
+          poetry env use python${{ matrix.pyv }}
+          poetry install
+          poetry run pytest
