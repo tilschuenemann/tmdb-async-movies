@@ -1,10 +1,7 @@
 import pytest
 import pandas as pd
 from movieparse.main import movieparse
-import numpy as np
 import json
-import unittest
-import mock
 
 
 @pytest.fixture
@@ -52,6 +49,13 @@ def mapping_stub(output_path, multiple_movies):
     return mapping_stub
 
 
+@pytest.fixture
+def details_stub(output_path):
+    details_stub = pd.DataFrame({"tmdb_id": [603, 604, 605]})
+    details_stub.to_csv((output_path / "details.csv"), index=False)
+    return details_stub
+
+
 def test_setup_caches(root_movie_dir, output_path, mapping_stub, multiple_movies):
     m = movieparse(root_movie_dir, output_path)
 
@@ -59,21 +63,17 @@ def test_setup_caches(root_movie_dir, output_path, mapping_stub, multiple_movies
     assert set(m.cached_mapping["disk_path"]) == set(multiple_movies)
 
 
-def test_read_existing(root_movie_dir, output_path):
+def test_setup_caches_empty(root_movie_dir, output_path):
+    m = movieparse(root_movie_dir, output_path)
+    assert m.cached_mapping.empty
+    assert set(m.cached_mapping_ids) == set()
+    assert set(m.cached_metadata_ids) == set()
 
-    details_stub = pd.DataFrame({"tmdb_id": [603, 604, 605]})
-    details_stub.to_csv((output_path / "details.csv"), index=False)
 
+def test_read_existing(root_movie_dir, output_path, details_stub):
     m = movieparse(root_movie_dir, output_path)
     assert set(m.cached_metadata_ids) == set([603, 604, 605])
     assert m.details.empty is False
-
-
-def test_setup_caches_empty(root_movie_dir, output_path):
-    m = movieparse(root_movie_dir, output_path)
-    assert set(m.cached_mapping_ids) == set()
-    assert set(m.cached_metadata_ids) == set()
-    assert m.cached_mapping.empty
 
 
 def test_dir_list_single(root_movie_dir, output_path, single_movie):

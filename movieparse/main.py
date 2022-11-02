@@ -1,8 +1,6 @@
 import pandas as pd
-import numpy as np
 from tqdm import tqdm
 
-import json
 import os
 import pathlib
 import re
@@ -10,6 +8,26 @@ import requests
 
 
 class movieparse:
+    __TMDB_API_KEY = None
+    __FORCE_ID_UPDATE = False
+    __FORCE_METADATA_UPDATE = False
+    __STRICT = False
+    __PARSING_STYLE = 0
+    __LANGUAGE = "en_US"
+
+    mapping = pd.DataFrame()
+    cast = collect = crew = details = genres = prod_comp = prod_count = spoken_langs = pd.DataFrame()
+
+    cached_mapping_ids = set()
+    cached_metadata_ids = set()
+    cached_mapping = pd.DataFrame()
+
+    # default codes
+    __DEFAULT = 0
+    __NO_RESULT = -1
+    __NO_EXTRACT = -2
+    __BAD_RESPONSE = -3
+
     def __init__(
         self,
         root_movie_dir: pathlib.Path,
@@ -21,34 +39,28 @@ class movieparse:
         parsing_style: int = 0,
         language: str = "en_US",
     ):
-        self.ROOT_MOVIE_DIR = root_movie_dir
-        self.OUTPUT_PATH = output_path
-        self.TMDB_API_KEY = tmdb_api_key
-        self.FORCE_ID_UPDATE = force_id_update
-        self.FORCE_METADATA_UPDATE = force_metadata_update
-        self.STRICT = strict
-        self.PARSING_STYLE = parsing_style
-        self.LANGUAGE = language
-
-        # error codes
-        self.__DEFAULT = 0
-        self.__NO_RESULT = -1
-        self.__NO_EXTRACT = -2
-        self.__BAD_RESPONSE = -3
+        self.__ROOT_MOVIE_DIR = root_movie_dir
+        self.__OUTPUT_PATH = output_path
+        self.__TMDB_API_KEY = tmdb_api_key
+        self.__FORCE_ID_UPDATE = force_id_update
+        self.__FORCE_METADATA_UPDATE = force_metadata_update
+        self.__STRICT = strict
+        self.__PARSING_STYLE = parsing_style
+        self.__LANGUAGE = language
 
         # fallbacks and error handling
         if output_path is None:
-            self.OUTPUT_PATH = pathlib.Path(os.getcwd())
+            self.__OUTPUT_PATH = pathlib.Path(os.getcwd())
         elif output_path.is_dir() is False:
             exit("please supply a ROOT_MOVIE_DIR that is a directory!")
 
         if tmdb_api_key is None:
             if os.getenv("TMDB_API_KEY") is not None:
-                self.TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+                self.__TMDB_API_KEY = os.getenv("TMDB_API_KEY")
             else:
                 exit("please supply a TMDB_API_KEY!")
 
-        if self.PARSING_STYLE not in range(0, 2):
+        if self.__PARSING_STYLE not in range(0, 2):
             exit("please supply a valid PARSING_STYLE!")
 
         # setup internals
@@ -56,10 +68,7 @@ class movieparse:
         self._read_existing()
 
     def _setup_caches(self) -> None:
-        self.cached_mapping_ids = set()
-        self.cached_mapping = pd.DataFrame()
-
-        tmp_path = self.OUTPUT_PATH / "mapping.csv"
+        tmp_path = self.__OUTPUT_PATH / "mapping.csv"
         if tmp_path.exists():
             self.cached_mapping = pd.read_csv(tmp_path)
             self.cached_mapping["disk_path"] = self.cached_mapping["disk_path"].apply(lambda x: pathlib.Path(x))
@@ -67,14 +76,6 @@ class movieparse:
 
     def _read_existing(self) -> None:
         """Reads metadata CSVs if existing and appends tmdb_ids to cached_metadata_ids."""
-
-        self.cached_metadata_ids = set()
-        self.cast = (
-            self.collect
-        ) = (
-            self.crew
-        ) = self.details = self.genres = self.prod_comp = self.prod_count = self.spoken_langs = pd.DataFrame()
-
         read_map = dict(
             {
                 "cast": self.cast,
@@ -89,10 +90,11 @@ class movieparse:
         )
         df_list = []
         for fname, df in read_map.items():
-            tmp_path = self.OUTPUT_PATH / f"{fname}.csv"
+            tmp_path = self.__OUTPUT_PATH / f"{fname}.csv"
             if tmp_path.exists():
                 df = pd.read_csv(tmp_path)
                 self.cached_metadata_ids |= set(df["tmdb_id"])
+                print(f"updated cached metadata ids: {self.cached_metadata_ids}")
             df_list.append(df)
 
         (
@@ -115,7 +117,7 @@ class movieparse:
 
     def _list_dirs(self) -> None:
         dirs = []
-        for folder in self.ROOT_MOVIE_DIR.iterdir():
+        for folder in self.__ROOT_MOVIE_DIR.iterdir():
             if folder.is_dir():
                 dirs.append(folder)
 
@@ -139,17 +141,17 @@ class movieparse:
         Returns -1 if no results come back.
         """
         if year != self.__NO_RESULT:
-            url = f"https://api.themoviedb.org/3/search/movie/?api_key={self.TMDB_API_KEY}&query={title}&year={year}&include_adult=true"
+            url = f"https://api.themoviedb.org/3/search/movie/?api_key={self.__TMDB_API_KEY}&query={title}&year={year}&include_adult=true"
             response = requests.get(url).json()
             try:
                 return int(response["results"][0]["id"])
             except IndexError:
-                if self.STRICT is False:
+                if self.__STRICT is False:
                     return self._get_id(title=title, year=self.__NO_RESULT)
                 else:
                     return self.__NO_RESULT
         else:
-            url = f"https://api.themoviedb.org/3/search/movie/?api_key={self.TMDB_API_KEY}&query={title}&include_adult=true"
+            url = f"https://api.themoviedb.org/3/search/movie/?api_key={self.__TMDB_API_KEY}&query={title}&include_adult=true"
             response = requests.get(url).json()
             try:
                 return int(response["results"][0]["id"])
@@ -159,15 +161,15 @@ class movieparse:
     def _get_ids(self) -> None:
         tmdb_ids = []
 
-        if self.PARSING_STYLE == 0:
+        if self.__PARSING_STYLE == 0:
             regex = re.compile(r"^(?P<disk_year>\d{4})\s{1}(?P<disk_title>.+)$")
-        elif self.PARSING_STYLE == 1:
+        elif self.__PARSING_STYLE == 1:
             regex = re.compile(r"^(?P<disk_year>\d{4})\s-\s(?P<disk_title>.+)$")
 
         for index, row in tqdm(self.mapping.iterrows(), desc="getting ids", total=len(self.mapping.index)):
             tmdb_id = self.__DEFAULT
 
-            if row["tmdb_id"] == self.__DEFAULT or self.FORCE_ID_UPDATE:
+            if row["tmdb_id"] == self.__DEFAULT or self.__FORCE_ID_UPDATE:
                 extract = re.match(regex, row["disk_path"].name)
                 if extract is not None:
                     year = int(extract.group("disk_year"))
@@ -184,12 +186,12 @@ class movieparse:
             tmdb_ids.append(tmdb_id)
 
         self.mapping["tmdb_id"] = tmdb_ids
-        self.mapping.to_csv((self.OUTPUT_PATH / "mapping.csv"), date_format="%Y-%m-%d", index=False)
+        self.mapping.to_csv((self.__OUTPUT_PATH / "mapping.csv"), date_format="%Y-%m-%d", index=False)
 
     def _update_metadata_lookup_ids(self) -> None:
         self.metadata_lookup_ids = set(self.mapping["tmdb_id"]) | set(self.mapping["tmdb_id_man"])
 
-        if self.FORCE_METADATA_UPDATE is False:
+        if self.__FORCE_METADATA_UPDATE is False:
             self.metadata_lookup_ids -= set(self.cached_metadata_ids)
 
         self.metadata_lookup_ids -= set([self.__DEFAULT, self.__NO_RESULT, self.__NO_EXTRACT, self.__BAD_RESPONSE])
@@ -266,7 +268,7 @@ class movieparse:
     def _get_metadata(self) -> None:
 
         for tmdb_id in tqdm(self.metadata_lookup_ids, desc="getting metadata"):
-            url = f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.TMDB_API_KEY}&language={self.LANGUAGE}&append_to_response=credits"
+            url = f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.__TMDB_API_KEY}&language={self.__LANGUAGE}&append_to_response=credits"
             response = requests.get(url).json()
             self._dissect_metadata_response(response, tmdb_id)
 
@@ -285,6 +287,6 @@ class movieparse:
         )
 
         for fname, df in write_map.items():
-            tmp_path = self.OUTPUT_PATH / fname
+            tmp_path = self.__OUTPUT_PATH / fname
             if df.empty is False:
                 df.to_csv(tmp_path, date_format="%Y-%m-%d", index=False)
