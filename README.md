@@ -1,3 +1,5 @@
+![Test Badge](https://github.com/tilschuenemann/movieparse/actions/workflows/tests.yml/badge.svg)
+
 # movieparse
 
 `movieparse` is a lazy utility for fetching bulk movie data from [TMDB](https://www.themoviedb.org/) using movie release year and title. It has both an
