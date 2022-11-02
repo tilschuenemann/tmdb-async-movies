@@ -44,13 +44,15 @@ def multiple_movies(root_movie_dir):
         paths.append(tmp)
     return paths
 
-@pytest.fixture 
+
+@pytest.fixture
 def mapping_stub(output_path, multiple_movies):
     mapping_stub = pd.DataFrame({"disk_path": multiple_movies, "tmdb_id": [603, 604, 605], "tmdb_id_man": [0, 0, 777]})
     mapping_stub.to_csv((output_path / "mapping.csv"), index=False)
     return mapping_stub
 
-def test_setup_caches(root_movie_dir, output_path,mapping_stub,multiple_movies):
+
+def test_setup_caches(root_movie_dir, output_path, mapping_stub, multiple_movies):
     m = movieparse(root_movie_dir, output_path)
 
     assert set(m.cached_mapping_ids) == set([603, 604, 605])
@@ -106,11 +108,12 @@ def test_update_mapping_nocache(root_movie_dir, output_path, multiple_movies):
     assert set(m.mapping["tmdb_id_man"]) == set([0])
     assert set(m.mapping["tmdb_id"]) == set([0])
 
+
 def test_update_mapping_cache(root_movie_dir, output_path, single_movie, mapping_stub):
     m = movieparse(root_movie_dir, output_path)
     m._list_dirs()
     m._update_mapping()
-    assert m.mapping.shape == (4,3)
+    assert m.mapping.shape == (4, 3)
     assert set(m.mapping["tmdb_id"]) == set([0, 603, 604, 605])
     assert set(m.mapping["tmdb_id_man"]) == set([0, 777])
 
@@ -144,7 +147,7 @@ def test_update_metadata_lookup_ids(root_movie_dir, output_path):
 def test_dissect_metadata(root_movie_dir, output_path, single_movie):
     m = movieparse(root_movie_dir, output_path)
 
-    with open("/home/til/03_code/2022-10-28 movieparse/tests/603_the_matrix.json", "r") as myfile:
+    with open("tests/603_the_matrix.json", "r") as myfile:
         data = myfile.read()
     mock_response = json.loads(data)
 

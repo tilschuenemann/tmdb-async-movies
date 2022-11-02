@@ -55,7 +55,7 @@ class movieparse:
         self._setup_caches()
         self._read_existing()
 
-    def _setup_caches(self):
+    def _setup_caches(self) -> None:
         self.cached_mapping_ids = set()
         self.cached_mapping = pd.DataFrame()
 
@@ -65,7 +65,7 @@ class movieparse:
             self.cached_mapping["disk_path"] = self.cached_mapping["disk_path"].apply(lambda x: pathlib.Path(x))
             self.cached_mapping_ids = set(self.cached_mapping["tmdb_id"])
 
-    def _read_existing(self):
+    def _read_existing(self) -> None:
         """Reads metadata CSVs if existing and appends tmdb_ids to cached_metadata_ids."""
 
         self.cached_metadata_ids = set()
@@ -106,14 +106,14 @@ class movieparse:
             self.spoken_langs,
         ) = df_list
 
-    def parse(self):
+    def parse(self) -> None:
         self._list_dirs()
         self._update_mapping()
         self._get_ids()
         self._update_metadata_lookup_ids()
         self._get_metadata()
 
-    def _list_dirs(self):
+    def _list_dirs(self) -> None:
         dirs = []
         for folder in self.ROOT_MOVIE_DIR.iterdir():
             if folder.is_dir():
@@ -127,7 +127,7 @@ class movieparse:
             }
         )
 
-    def _update_mapping(self):
+    def _update_mapping(self) -> None:
         self.mapping = pd.concat([self.cached_mapping, self.mapping], axis=0, ignore_index=True).drop_duplicates(
             subset="disk_path", keep="first"
         )
@@ -142,7 +142,7 @@ class movieparse:
             url = f"https://api.themoviedb.org/3/search/movie/?api_key={self.TMDB_API_KEY}&query={title}&year={year}&include_adult=true"
             response = requests.get(url).json()
             try:
-                return response["results"][0]["id"]
+                return int(response["results"][0]["id"])
             except IndexError:
                 if self.STRICT is False:
                     return self._get_id(title=title, year=self.__NO_RESULT)
@@ -152,11 +152,11 @@ class movieparse:
             url = f"https://api.themoviedb.org/3/search/movie/?api_key={self.TMDB_API_KEY}&query={title}&include_adult=true"
             response = requests.get(url).json()
             try:
-                return response["results"][0]["id"]
+                return int(response["results"][0]["id"])
             except IndexError:
                 return self.__NO_RESULT
 
-    def _get_ids(self):
+    def _get_ids(self) -> None:
         tmdb_ids = []
 
         if self.PARSING_STYLE == 0:
@@ -170,8 +170,8 @@ class movieparse:
             if row["tmdb_id"] == self.__DEFAULT or self.FORCE_ID_UPDATE:
                 extract = re.match(regex, row["disk_path"].name)
                 if extract is not None:
-                    year = extract.groups("disk_year")[0]
-                    title = extract.groups("disk_year")[1]
+                    year = int(extract.group("disk_year"))
+                    title = extract.group("disk_title")
                     try:
                         tmdb_id = self._get_id(title, year)
                     except:
@@ -186,7 +186,7 @@ class movieparse:
         self.mapping["tmdb_id"] = tmdb_ids
         self.mapping.to_csv((self.OUTPUT_PATH / "mapping.csv"), date_format="%Y-%m-%d", index=False)
 
-    def _update_metadata_lookup_ids(self):
+    def _update_metadata_lookup_ids(self) -> None:
         self.metadata_lookup_ids = set(self.mapping["tmdb_id"]) | set(self.mapping["tmdb_id_man"])
 
         if self.FORCE_METADATA_UPDATE is False:
@@ -194,7 +194,7 @@ class movieparse:
 
         self.metadata_lookup_ids -= set([self.__DEFAULT, self.__NO_RESULT, self.__NO_EXTRACT, self.__BAD_RESPONSE])
 
-    def _dissect_metadata_response(self, response: dict, tmdb_id: int):
+    def _dissect_metadata_response(self, response: dict, tmdb_id: int) -> None:
         cast = collect = crew = genres = prod_comp = prod_count = spoken_langs = pd.DataFrame()
 
         op_map = dict(
@@ -214,22 +214,29 @@ class movieparse:
                 df = pd.json_normalize(response["credits"], record_path=k).add_prefix(f"{k}.")
             elif k == "collection":
                 try:
-                    if response["belongs_to_collection"] is None:
-                        response.pop("belongs_to_collection")
-                    else:
+                    if response["belongs_to_collection"] is not None:
                         df = pd.json_normalize(response["belongs_to_collection"], errors="ignore").add_prefix(f"{k}.")
-                        response.pop("belongs_to_collection")
                 except Exception as e:
                     print("The error raised is: ", e)
             else:
                 df = pd.json_normalize(response, record_path=k).add_prefix(f"{k}.")
-                response.pop(k)
             df["tmdb_id"] = tmdb_id
             df_store.append(df)
 
         cast, collect, crew, genres, prod_comp, prod_count, spoken_langs = df_store
 
-        response.pop("credits")
+        [
+            response.pop(x)
+            for x in [
+                "belongs_to_collection",
+                "credits",
+                "genres",
+                "production_companies",
+                "production_countries",
+                "spoken_languages",
+            ]
+        ]
+
         details = pd.json_normalize(
             response,
             errors="ignore",
@@ -256,14 +263,14 @@ class movieparse:
             ignore_index=True,
         )
 
-    def _get_metadata(self):
+    def _get_metadata(self) -> None:
 
         for tmdb_id in tqdm(self.metadata_lookup_ids, desc="getting metadata"):
             url = f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.TMDB_API_KEY}&language={self.LANGUAGE}&append_to_response=credits"
             response = requests.get(url).json()
             self._dissect_metadata_response(response, tmdb_id)
 
-    def write(self):
+    def write(self) -> None:
         write_map = dict(
             {
                 "details.csv": self.details,
