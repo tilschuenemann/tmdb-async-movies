@@ -242,8 +242,8 @@ class movieparse:
         details = pd.json_normalize(
             response,
             errors="ignore",
-        ).add_prefix("m.")
-        details["tmdb_id"] = details.pop("m.id")
+        )
+        details["tmdb_id"] = details.pop("id")
 
         if cast.empty is False:
             self.cast = pd.concat([self.cast, cast], axis=0, ignore_index=True)

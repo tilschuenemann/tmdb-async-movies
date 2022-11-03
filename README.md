@@ -105,25 +105,25 @@ mapping.csv                         genres.csv
     disk_path                           tmdb_id
 
 details.csv                         spoken_languages.csv
-    m.adult                             spoken_languages.english_name
-    m.backdrop_path                     spoken_languages.iso_639_1
-    m.budget                            spoken_languages.name
-    m.homepage                          tmdb_id
-    m.imdb_id
-    m.original_language
-    m.original_title                production_companies.csv
-    m.overview                          production_companies.id
-    m.popularity                        production_companies.logo_path
-    m.poster_path                       production_companies.name
-    m.release_date                      production_companies.origin_country
-    m.revenue                           tmdb_id
-    m.runtime
-    m.status                        production_countries.csv
-    m.tagline                           production_countries.iso_3166_1
-    m.title                             production_countries.name
-    m.video                             tmdb_id
-    m.vote_average
-    m.vote_count                    collections.csv
+    adult                               spoken_languages.english_name
+    backdrop_path                       spoken_languages.iso_639_1
+    budget                              spoken_languages.name
+    homepage                            tmdb_id
+    imdb_id
+    original_language
+    original_title                  production_companies.csv
+    overview                            production_companies.id
+    popularity                          production_companies.logo_path
+    poster_path                         production_companies.name
+    release_date                        production_companies.origin_country
+    revenue                             tmdb_id
+    runtime
+    status                          production_countries.csv
+    tagline                             production_countries.iso_3166_1
+    title                               production_countries.name
+    video                               tmdb_id
+    vote_average
+    vote_count                      collections.csv
     tmdb_id                             collection.id
                                         collection.name
                                         collection.poster_path
