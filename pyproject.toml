@@ -1,9 +1,19 @@
 [tool.poetry]
 name = "movieparse"
-version = "0.1.0"
+version = "0.1.1"
 description = "movieparse is a lazy utility for fetching bulk movie data from TMDB."
 authors = ["schuenemann"]
-
+readme = "README.md"
+repository = "https://github.com/tilschuenemann/movieparse"
+keywords = ["metadata","movies","movie","analytics","tmbd","bulk", "tmdb-api","tmdb-movie"]
+classifiers = ["Development Status :: 3 - Alpha",
+"Intended Audience :: Developers",
+"Intended Audience :: End Users/Desktop",
+"Operating System :: MacOS",
+"Operating System :: Microsoft :: Windows",
+"Operating System :: POSIX :: Linux",
+"Programming Language :: Python :: 3.10",
+"Programming Language :: Python :: 3.11"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
