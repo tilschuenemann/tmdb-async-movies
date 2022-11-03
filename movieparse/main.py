@@ -6,6 +6,8 @@ import pathlib
 import re
 import requests
 
+from movieparse.types import movieparse_types
+
 
 class movieparse:
     __TMDB_API_KEY = None
@@ -67,6 +69,18 @@ class movieparse:
         self._setup_caches()
         self._read_existing()
 
+    def _table_iter(self) -> dict[str, pd.DataFrame]:
+        return {
+            "cast": self.cast,
+            "collection": self.collect,
+            "crew": self.crew,
+            "genres": self.genres,
+            "production_companies": self.prod_comp,
+            "production_countries": self.prod_count,
+            "spoken_languages": self.spoken_langs,
+            "details": self.details,
+        }
+
     def _setup_caches(self) -> None:
         tmp_path = self.__OUTPUT_PATH / "mapping.csv"
         if tmp_path.exists():
@@ -76,25 +90,15 @@ class movieparse:
 
     def _read_existing(self) -> None:
         """Reads metadata CSVs if existing and appends tmdb_ids to cached_metadata_ids."""
-        read_map = dict(
-            {
-                "cast": self.cast,
-                "collections": self.collect,
-                "crew": self.crew,
-                "details": self.details,
-                "genres": self.genres,
-                "production_companies": self.prod_comp,
-                "production_countries": self.prod_count,
-                "spoken_languages": self.spoken_langs,
-            }
-        )
         df_list = []
-        for fname, df in read_map.items():
+        for fname, df in self._table_iter().items():
             tmp_path = self.__OUTPUT_PATH / f"{fname}.csv"
             if tmp_path.exists():
                 df = pd.read_csv(tmp_path)
                 self.cached_metadata_ids |= set(df["tmdb_id"])
-                print(f"updated cached metadata ids: {self.cached_metadata_ids}")
+                df = pd.DataFrame(movieparse_types(df.to_dict()))
+            else:
+                df = pd.DataFrame()
             df_list.append(df)
 
         (
@@ -197,73 +201,40 @@ class movieparse:
         self.metadata_lookup_ids -= set([self.__DEFAULT, self.__NO_RESULT, self.__NO_EXTRACT, self.__BAD_RESPONSE])
 
     def _dissect_metadata_response(self, response: dict, tmdb_id: int) -> None:
-        cast = collect = crew = genres = prod_comp = prod_count = spoken_langs = pd.DataFrame()
+        results = []
+        for c, df in self._table_iter().items():
+            tmp = pd.DataFrame()
 
-        op_map = dict(
-            {
-                "cast": cast,
-                "collection": collect,
-                "crew": crew,
-                "genres": genres,
-                "production_companies": prod_comp,
-                "production_countries": prod_count,
-                "spoken_languages": spoken_langs,
-            }
-        )
-        df_store = []
-        for k, df in op_map.items():
-            if k in ["cast", "crew"]:
-                df = pd.json_normalize(response["credits"], record_path=k).add_prefix(f"{k}.")
-            elif k == "collection":
-                try:
-                    if response["belongs_to_collection"] is not None:
-                        df = pd.json_normalize(response["belongs_to_collection"], errors="ignore").add_prefix(f"{k}.")
-                except Exception as e:
-                    print("The error raised is: ", e)
+            if c in ["cast", "crew"]:
+                tmp = pd.json_normalize(response["credits"], record_path=c).add_prefix(f"{c}.")
+            elif c == "collection":
+                if response["belongs_to_collection"] is not None:
+                    tmp = pd.json_normalize(response["belongs_to_collection"]).add_prefix(f"{c}.")
+                response.pop("belongs_to_collection")
+            elif c == "details":
+                response.pop("credits")
+                response.pop("id")
+                tmp = pd.json_normalize(response)
             else:
-                df = pd.json_normalize(response, record_path=k).add_prefix(f"{k}.")
-            df["tmdb_id"] = tmdb_id
-            df_store.append(df)
+                tmp = pd.json_normalize(response, record_path=c).add_prefix(f"{c}.")
+                response.pop(c)
 
-        cast, collect, crew, genres, prod_comp, prod_count, spoken_langs = df_store
+            tmp["tmdb_id"] = tmdb_id
+            tmp = pd.DataFrame(movieparse_types(tmp.to_dict()))
 
-        [
-            response.pop(x)
-            for x in [
-                "belongs_to_collection",
-                "credits",
-                "genres",
-                "production_companies",
-                "production_countries",
-                "spoken_languages",
-            ]
-        ]
-
-        details = pd.json_normalize(
-            response,
-            errors="ignore",
-        )
-        details["tmdb_id"] = details.pop("id")
-
-        if cast.empty is False:
-            self.cast = pd.concat([self.cast, cast], axis=0, ignore_index=True)
-        self.collect = pd.concat([self.collect, collect], axis=0, ignore_index=True)
-        if crew.empty is False:
-            self.crew = pd.concat([self.crew, crew], axis=0, ignore_index=True)
-        self.details = pd.concat([self.details, details], axis=0, ignore_index=True)
-        self.genres = pd.concat([self.genres, genres], axis=0, ignore_index=True)
-        self.spoken_langs = pd.concat([self.spoken_langs, spoken_langs], axis=0, ignore_index=True)
-
-        self.prod_comp = pd.concat(
-            [self.prod_comp, prod_comp],
-            axis=0,
-            ignore_index=True,
-        )
-        self.prod_count = pd.concat(
-            [self.prod_count, prod_count],
-            axis=0,
-            ignore_index=True,
-        )
+            if tmp.empty is False:
+                df = pd.concat([df, tmp], axis=0, ignore_index=True)
+            results.append(df)
+        (
+            self.cast,
+            self.collect,
+            self.crew,
+            self.genres,
+            self.prod_comp,
+            self.prod_count,
+            self.spoken_langs,
+            self.details,
+        ) = results
 
     def _get_metadata(self) -> None:
 
@@ -273,20 +244,7 @@ class movieparse:
             self._dissect_metadata_response(response, tmdb_id)
 
     def write(self) -> None:
-        write_map = dict(
-            {
-                "details.csv": self.details,
-                "spoken_languages.csv": self.spoken_langs,
-                "crew.csv": self.crew,
-                "cast.csv": self.cast,
-                "genres.csv": self.genres,
-                "production_companies.csv": self.prod_comp,
-                "production_countries.csv": self.prod_count,
-                "collections.csv": self.collect,
-            }
-        )
-
-        for fname, df in write_map.items():
-            tmp_path = self.__OUTPUT_PATH / fname
+        for fname, df in self._table_iter().items():
+            tmp_path = self.__OUTPUT_PATH / f"{fname}.csv"
             if df.empty is False:
                 df.to_csv(tmp_path, date_format="%Y-%m-%d", index=False)

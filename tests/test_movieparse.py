@@ -73,7 +73,6 @@ def test_setup_caches_empty(root_movie_dir, output_path):
 def test_read_existing(root_movie_dir, output_path, details_stub):
     m = movieparse(root_movie_dir, output_path)
     assert set(m.cached_metadata_ids) == set([603, 604, 605])
-    assert m.details.empty is False
 
 
 def test_dir_list_single(root_movie_dir, output_path, single_movie):
