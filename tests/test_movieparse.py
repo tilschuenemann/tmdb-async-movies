@@ -292,3 +292,20 @@ def test_write_multiple(root_movie_dir, output_path, multiple_movies):
         "spoken_languages",
     ]:
         assert (output_path / f"{metadata}.csv").exists()
+
+
+def test_e2e_badapikey(root_movie_dir, output_path, multiple_movies):
+    m = movieparse(root_movie_dir, output_path, tmdb_api_key="wrongapikey")
+    m.parse()
+    assert set(m.mapping["tmdb_id_man"]) == set([0])
+    assert set(m.mapping["disk_path"]) == set(multiple_movies)
+    assert set(m.mapping["tmdb_id"]) == set([-3])
+
+    assert m.cast.empty
+    assert m.collect.empty
+    assert m.crew.empty
+    assert m.details.empty
+    assert m.genres.empty
+    assert m.prod_comp.empty
+    assert m.prod_count.empty
+    assert m.spoken_langs.empty

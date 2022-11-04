@@ -5,8 +5,9 @@ import os
 import pathlib
 import re
 import requests
+from typing import Set, Optional, Dict
 
-from movieparse.types import movieparse_types
+from movieparse.type_mapping import movieparse_types
 
 
 class movieparse:
@@ -20,8 +21,8 @@ class movieparse:
     mapping = pd.DataFrame()
     cast = collect = crew = details = genres = prod_comp = prod_count = spoken_langs = pd.DataFrame()
 
-    cached_mapping_ids = set()
-    cached_metadata_ids = set()
+    cached_mapping_ids: Set[int] = set()
+    cached_metadata_ids: Set[int] = set()
     cached_mapping = pd.DataFrame()
 
     # default codes
@@ -33,7 +34,7 @@ class movieparse:
     def __init__(
         self,
         root_movie_dir: pathlib.Path,
-        output_path: pathlib.Path,
+        output_path: Optional[pathlib.Path],
         tmdb_api_key: str = None,
         force_id_update: bool = False,
         force_metadata_update: bool = False,
@@ -144,23 +145,27 @@ class movieparse:
 
         Returns -1 if no results come back.
         """
-        if year != self.__NO_RESULT:
-            url = f"https://api.themoviedb.org/3/search/movie/?api_key={self.__TMDB_API_KEY}&query={title}&year={year}&include_adult=true"
-            response = requests.get(url).json()
+        if year == self.__NO_RESULT:
+            response = requests.get(
+                f"https://api.themoviedb.org/3/search/movie/?api_key={self.__TMDB_API_KEY}&query={title}&year={year}&include_adult=true"
+            ).json()
             try:
                 return int(response["results"][0]["id"])
             except IndexError:
-                if self.__STRICT is False:
-                    return self._get_id(title=title, year=self.__NO_RESULT)
-                else:
+                if self.__STRICT is True:
                     return self.__NO_RESULT
-        else:
-            url = f"https://api.themoviedb.org/3/search/movie/?api_key={self.__TMDB_API_KEY}&query={title}&include_adult=true"
-            response = requests.get(url).json()
-            try:
-                return int(response["results"][0]["id"])
-            except IndexError:
-                return self.__NO_RESULT
+            except KeyError:
+                return self.__BAD_RESPONSE
+
+        response = requests.get(
+            f"https://api.themoviedb.org/3/search/movie/?api_key={self.__TMDB_API_KEY}&query={title}&include_adult=true"
+        ).json()
+        try:
+            return int(response["results"][0]["id"])
+        except IndexError:
+            return self.__NO_RESULT
+        except KeyError:
+            return self.__BAD_RESPONSE
 
     def _get_ids(self) -> None:
         tmdb_ids = []
@@ -178,10 +183,7 @@ class movieparse:
                 if extract is not None:
                     year = int(extract.group("disk_year"))
                     title = extract.group("disk_title")
-                    try:
-                        tmdb_id = self._get_id(title, year)
-                    except:
-                        tmdb_id = self.__BAD_RESPONSE
+                    tmdb_id = self._get_id(title, year)
                 else:
                     tmdb_id = self.__NO_EXTRACT
             else:
@@ -200,7 +202,7 @@ class movieparse:
 
         self.metadata_lookup_ids -= set([self.__DEFAULT, self.__NO_RESULT, self.__NO_EXTRACT, self.__BAD_RESPONSE])
 
-    def _dissect_metadata_response(self, response: dict, tmdb_id: int) -> None:
+    def _dissect_metadata_response(self, response: Dict[str, pd.DataFrame], tmdb_id: int) -> None:
         results = []
         for c, df in self._table_iter().items():
             tmp = pd.DataFrame()

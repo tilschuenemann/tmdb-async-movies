@@ -1,7 +1,7 @@
 from typing import TypedDict
 
 movieparse_types = TypedDict(
-    "General",
+    "movieparse_types",
     {
         "cast.adult": bool,
         "cast.gender": int,
