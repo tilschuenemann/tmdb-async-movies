@@ -106,11 +106,11 @@ class movieparse:
             self.cast,
             self.collect,
             self.crew,
-            self.details,
             self.genres,
             self.prod_comp,
             self.prod_count,
             self.spoken_langs,
+            self.details,
         ) = df_list
 
     def parse(self) -> None:
