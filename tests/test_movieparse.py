@@ -57,7 +57,7 @@ def details_stub(output_path):
 
 
 def test_setup_caches(root_movie_dir, output_path, mapping_stub, multiple_movies):
-    m = movieparse(root_movie_dir, output_path)
+    m = movieparse(root_movie_dir=root_movie_dir, output_path=output_path)
 
     assert set(m.cached_mapping_ids) == set([603, 604, 605])
     assert set(m.cached_mapping["disk_path"]) == set(multiple_movies)
@@ -73,27 +73,48 @@ def test_setup_caches_empty(root_movie_dir, output_path):
 def test_read_existing(root_movie_dir, output_path, details_stub):
     m = movieparse(root_movie_dir, output_path)
     assert set(m.cached_metadata_ids) == set([603, 604, 605])
+    assert m.details.empty is False
 
 
-def test_dir_list_single(root_movie_dir, output_path, single_movie):
+def test_estimate_parsing_style(output_path):
+    l0 = []
+    with pytest.raises(SystemExit, match="please supply a ROOT_MOVIE_DIR or a MOVIE_LIST!"):
+        m = movieparse(output_path, movie_list=l0)
+        m._create_mapping()
+        m._guess_parsing_style()
+
+    l1 = ["1999 The Matrix", "2003 The Matrix Reloaded", "2003 The Matrix Revolutions"]
+    m = movieparse(output_path=output_path, movie_list=l1)
+    m._create_mapping()
+    m._guess_parsing_style()
+    assert m._movieparse__PARSING_STYLE == 0
+
+    l2 = ["1999 The Matrix", "2003 - The Matrix Reloaded"]
+    m = movieparse(output_path=output_path, movie_list=l2)
+    m._create_mapping()
+    m._guess_parsing_style()
+    assert m._movieparse__PARSING_STYLE == 0
+
+
+def test_create_mapping_single(root_movie_dir, output_path, single_movie):
     m = movieparse(root_movie_dir, output_path)
-    m._list_dirs()
+    m._create_mapping()
     assert set(m.mapping["disk_path"]) == set([single_movie])
     assert m.mapping.shape == (1, 3)
     assert set(m.mapping.columns) == set(["disk_path", "tmdb_id", "tmdb_id_man"])
 
 
-def test_dir_list_multiple(root_movie_dir, output_path, multiple_movies):
+def test_create_mapping_multiple(root_movie_dir, output_path, multiple_movies):
     m = movieparse(root_movie_dir, output_path)
-    m._list_dirs()
+    m._create_mapping()
     assert set(m.mapping["disk_path"]) == set(multiple_movies)
     assert m.mapping.shape == (3, 3)
     assert set(m.mapping.columns) == set(["disk_path", "tmdb_id", "tmdb_id_man"])
 
 
-def test_dir_list_empty(root_movie_dir, output_path):
+def test_create_mapping_empty(root_movie_dir, output_path):
     m = movieparse(root_movie_dir, output_path)
-    m._list_dirs()
+    m._create_mapping()
     assert set(m.mapping["disk_path"]) == set()
     assert m.mapping.shape == (0, 3)
     assert set(m.mapping.columns) == set(["disk_path", "tmdb_id", "tmdb_id_man"])
@@ -101,7 +122,7 @@ def test_dir_list_empty(root_movie_dir, output_path):
 
 def test_update_mapping_nocache(root_movie_dir, output_path, multiple_movies):
     m = movieparse(root_movie_dir, output_path)
-    m._list_dirs()
+    m._create_mapping()
     m._update_mapping()
     assert set(m.mapping["disk_path"]) == set(multiple_movies)
     assert set(m.mapping["tmdb_id_man"]) == set([0])
@@ -110,7 +131,7 @@ def test_update_mapping_nocache(root_movie_dir, output_path, multiple_movies):
 
 def test_update_mapping_cache(root_movie_dir, output_path, single_movie, mapping_stub):
     m = movieparse(root_movie_dir, output_path)
-    m._list_dirs()
+    m._create_mapping()
     m._update_mapping()
     assert m.mapping.shape == (4, 3)
     assert set(m.mapping["tmdb_id"]) == set([0, 603, 604, 605])
@@ -239,7 +260,7 @@ def test_dissect_metadata(root_movie_dir, output_path, single_movie):
 
 
 def test_get_metadata_empty(root_movie_dir, output_path):
-    m = movieparse(root_movie_dir, output_path)
+    m = movieparse(root_movie_dir, output_path, parsing_style=0)
     m.parse()
 
 
@@ -254,7 +275,7 @@ def test_get_metadata(root_movie_dir, output_path, multiple_movies):
 
 
 def test_write_empty(root_movie_dir, output_path):
-    m = movieparse(root_movie_dir, output_path)
+    m = movieparse(root_movie_dir, output_path, parsing_style=0)
     m.parse()
     m.write()
 
@@ -295,7 +316,7 @@ def test_write_multiple(root_movie_dir, output_path, multiple_movies):
 
 
 def test_e2e_badapikey(root_movie_dir, output_path, multiple_movies):
-    m = movieparse(root_movie_dir, output_path, tmdb_api_key="wrongapikey")
+    m = movieparse(root_movie_dir=root_movie_dir, output_path=output_path, tmdb_api_key="wrongapikey")
     m.parse()
     assert set(m.mapping["tmdb_id_man"]) == set([0])
     assert set(m.mapping["disk_path"]) == set(multiple_movies)

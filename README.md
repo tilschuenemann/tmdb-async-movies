@@ -41,13 +41,15 @@ Additional options:
 
 ```bash
 movieparse -h
-usage: tmdb_parser [-h] [--tmdb_api_key [TMDB_API_KEY]] [--parsing_style [{0,1}]] [--output_path [OUTPUT_PATH]] [--lax] [--language [LANGUAGE]] [--eager] root_movie_dir
-
-positional arguments:
-  root_movie_dir        Directory containing your movie folders.
+usage: tmdb_parser [-h] [--root_movie_dir [ROOT_MOVIE_DIR] | --movie_list MOVIE_LIST [MOVIE_LIST ...]] [--tmdb_api_key [TMDB_API_KEY]]
+                   [--parsing_style [{0,1}]] [--output_path [OUTPUT_PATH]] [--lax] [--language [LANGUAGE]] [--eager]
 
 options:
   -h, --help            show this help message and exit
+  --root_movie_dir [ROOT_MOVIE_DIR]
+                        Directory containing your movie folders.
+  --movie_list MOVIE_LIST [MOVIE_LIST ...]
+                        Alternative to root_movie_dir, takes list of strings with movie title and optionally movie release year.
   --tmdb_api_key [TMDB_API_KEY]
                         TMDB API key. If not supplied here, environment variable TMDB_API_KEY will be read.
   --parsing_style [{0,1}]
@@ -57,7 +59,7 @@ options:
   --lax                 Use if TMDB ID lookup should fall back to title only (instead of year+title). Results may not be as accurate.
   --language [LANGUAGE]
                         ISO-639-1 language shortcode for specifying result language. Defaults to en_US.
-  --eager               Using this will refetch all IDs and metadata without caching anything.
+  --eager               Using this will refetch all IDs and metadata without accessing the cache.
 ```
 
 ## Features
@@ -88,11 +90,13 @@ you can add the _tmdb_id_man_ manually:
 | ------------------------------- | ------- | ----------- |
 | /root_movie_dir/1999 The Martix | -1      | _603_       |
 
-The next time you use the parser, that manual id will be looked up.
+The next time you use `movieparse` the manual id will be looked up.
 
 ### Caching
 
-Metadata and TMDB Ids are only looked up again if they're not in the current data.
+If you ran `movieparse` successfully, the mapping and metadata files will be written to disk. The next time you run it, only new paths will be appended to your mapping and metadata will be only looked up if it's not present in the current metadata.
+
+You can disable this behavior by using the `--eager` flag in the CLI.
 
 ### Schemas
 

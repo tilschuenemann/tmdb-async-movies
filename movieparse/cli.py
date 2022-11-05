@@ -5,7 +5,17 @@ from movieparse.main import movieparse
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="tmdb_parser")
-    parser.add_argument("root_movie_dir", nargs=1, type=pathlib.Path, help="Directory containing your movie folders.")
+
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--root_movie_dir", nargs="?", type=pathlib.Path, help="Directory containing your movie folders."
+    )
+    group.add_argument(
+        "--movie_list",
+        nargs="+",
+        type=str,
+        help="Alternative to root_movie_dir, takes list of strings with movie title and optionally movie release year.",
+    )
     parser.add_argument(
         "--tmdb_api_key",
         nargs="?",
@@ -16,9 +26,8 @@ def main() -> None:
         "--parsing_style",
         nargs="?",
         type=int,
-        choices=[0, 1],
-        const=0,
-        default=0,
+        choices=[0, max(movieparse.get_parsing_patters().keys())],
+        default=-1,
         help="Naming convention used - see documentation for examples.",
     )
     parser.add_argument(
@@ -41,7 +50,7 @@ def main() -> None:
         help="ISO-639-1 language shortcode for specifying result language. Defaults to en_US.",
     )
     parser.add_argument(
-        "--eager", action="store_true", help="Using this will refetch all IDs and metadata without caching anything."
+        "--eager", action="store_true", help="Using this will refetch all IDs and metadata without accessing the cache."
     )
 
     args = parser.parse_args()

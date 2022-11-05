@@ -5,22 +5,14 @@ import os
 import pathlib
 import re
 import requests
-from typing import Set, Optional, Dict
+from typing import Set, Optional, Dict, List, Union
 
 from movieparse.type_mapping import movieparse_types
 
 
 class movieparse:
-    __TMDB_API_KEY = None
-    __FORCE_ID_UPDATE = False
-    __FORCE_METADATA_UPDATE = False
-    __STRICT = False
-    __PARSING_STYLE = 0
-    __LANGUAGE = "en_US"
-
     mapping = pd.DataFrame()
     cast = collect = crew = details = genres = prod_comp = prod_count = spoken_langs = pd.DataFrame()
-
     cached_mapping_ids: Set[int] = set()
     cached_metadata_ids: Set[int] = set()
     cached_mapping = pd.DataFrame()
@@ -31,40 +23,58 @@ class movieparse:
     __NO_EXTRACT = -2
     __BAD_RESPONSE = -3
 
+    @staticmethod
+    def get_parsing_patters() -> dict[int, re.Pattern]:
+        return {
+            0: re.compile(r"^(?P<disk_year>\d{4})\s{1}(?P<disk_title>.+)$"),
+            1: re.compile(r"^(?P<disk_year>\d{4})\s-\s(?P<disk_title>.+)$"),
+        }
+
     def __init__(
         self,
-        root_movie_dir: pathlib.Path,
-        output_path: Optional[pathlib.Path],
-        tmdb_api_key: str = None,
+        root_movie_dir: pathlib.Path | None = None,
+        output_path: pathlib.Path | None = None,
+        movie_list: List[str] | None = None,
+        tmdb_api_key: str | None = None,
+        parsing_style: int = -1,
         force_id_update: bool = False,
         force_metadata_update: bool = False,
         strict: bool = False,
-        parsing_style: int = 0,
         language: str = "en_US",
     ):
-        self.__ROOT_MOVIE_DIR = root_movie_dir
-        self.__OUTPUT_PATH = output_path
-        self.__TMDB_API_KEY = tmdb_api_key
+
         self.__FORCE_ID_UPDATE = force_id_update
         self.__FORCE_METADATA_UPDATE = force_metadata_update
         self.__STRICT = strict
-        self.__PARSING_STYLE = parsing_style
         self.__LANGUAGE = language
 
-        # fallbacks and error handling
+        if (root_movie_dir is None and movie_list is None) or (
+            root_movie_dir is not None
+            and movie_list is not None
+            and (root_movie_dir.is_dir() is False or not movie_list)
+        ):
+            exit("please supply a ROOT_MOVIE_DIR or a MOVIE_LIST!")
+        else:
+            self.__ROOT_MOVIE_DIR = root_movie_dir
+            self.__MOVIE_LIST = movie_list
+
         if output_path is None:
-            self.__OUTPUT_PATH = pathlib.Path(os.getcwd())
+            output_path = pathlib.Path(os.getcwd())
         elif output_path.is_dir() is False:
             exit("please supply a ROOT_MOVIE_DIR that is a directory!")
+        self.__OUTPUT_PATH = output_path
 
-        if tmdb_api_key is None:
-            if os.getenv("TMDB_API_KEY") is not None:
-                self.__TMDB_API_KEY = os.getenv("TMDB_API_KEY")
-            else:
-                exit("please supply a TMDB_API_KEY!")
+        if tmdb_api_key is None and os.getenv("TMDB_API_KEY") is not None:
+            self.__TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+        elif tmdb_api_key is not None:
+            self.__TMDB_API_KEY = tmdb_api_key
+        else:
+            exit("please supply a TMDB_API_KEY!")
 
-        if self.__PARSING_STYLE not in range(0, 2):
+        if parsing_style not in range(-1, max(movieparse.get_parsing_patters().keys())):
             exit("please supply a valid PARSING_STYLE!")
+        else:
+            self.__PARSING_STYLE = parsing_style
 
         # setup internals
         self._setup_caches()
@@ -97,7 +107,7 @@ class movieparse:
             if tmp_path.exists():
                 df = pd.read_csv(tmp_path)
                 self.cached_metadata_ids |= set(df["tmdb_id"])
-                df = pd.DataFrame(movieparse_types(df.to_dict()))
+                df = pd.DataFrame(movieparse_types(df.to_dict()))  # type: ignore
             else:
                 df = pd.DataFrame()
             df_list.append(df)
@@ -114,25 +124,60 @@ class movieparse:
         ) = df_list
 
     def parse(self) -> None:
-        self._list_dirs()
+        self._create_mapping()
+
+        if self.__PARSING_STYLE == -1:
+            self._guess_parsing_style()
+
         self._update_mapping()
         self._get_ids()
         self._update_metadata_lookup_ids()
         self._get_metadata()
 
-    def _list_dirs(self) -> None:
-        dirs = []
-        for folder in self.__ROOT_MOVIE_DIR.iterdir():
-            if folder.is_dir():
-                dirs.append(folder)
+    def _create_mapping(self) -> None:
+        if self.__MOVIE_LIST is None and isinstance(self.__ROOT_MOVIE_DIR, pathlib.Path):
+            names = []
+            for folder in self.__ROOT_MOVIE_DIR.iterdir():
+                if folder.is_dir():
+                    names.append(folder)
+            self.mapping = pd.DataFrame(
+                {
+                    "tmdb_id": self.__DEFAULT,
+                    "tmdb_id_man": self.__DEFAULT,
+                    "disk_path": names,
+                }
+            )
+        elif self.__ROOT_MOVIE_DIR is None:
+            self.mapping = pd.DataFrame(
+                {
+                    "tmdb_id": self.__DEFAULT,
+                    "tmdb_id_man": self.__DEFAULT,
+                    "disk_path": self.__MOVIE_LIST,
+                }
+            )
 
-        self.mapping = pd.DataFrame(
-            {
-                "tmdb_id": self.__DEFAULT,
-                "tmdb_id_man": self.__DEFAULT,
-                "disk_path": dirs,
-            }
-        )
+    def _guess_parsing_style(self) -> None:
+        """Iterates over supplied names with all parsing styles, determining the most matches. Incase two patterns have
+        the same matches, the first one is used."""
+
+        tmp = pd.DataFrame()
+        if self.__MOVIE_LIST is None:
+            tmp["names"] = self.mapping["disk_path"].apply(lambda x: pathlib.Path(x).name)
+        elif self.__ROOT_MOVIE_DIR is None:
+            tmp["names"] = self.mapping["disk_path"]
+
+        max_matches = 0
+        for style, pattern in movieparse.get_parsing_patters().items():
+            matches = tmp["names"].str.extract(pattern, expand=True).notnull().sum().sum()
+            if matches > max_matches:
+                self.__PARSING_STYLE = style
+                max_matches = matches
+
+        if max_matches == 0 and self.__PARSING_STYLE == -1:
+            exit("couldn't estimate a parsing style, please supply one for yourself!")
+
+        max_items = len(tmp.index) * 2
+        print(f"estimated best parsing style: {self.__PARSING_STYLE} with {max_matches} / {max_items} matches")
 
     def _update_mapping(self) -> None:
         self.mapping = pd.concat([self.cached_mapping, self.mapping], axis=0, ignore_index=True).drop_duplicates(
@@ -170,10 +215,7 @@ class movieparse:
     def _get_ids(self) -> None:
         tmdb_ids = []
 
-        if self.__PARSING_STYLE == 0:
-            regex = re.compile(r"^(?P<disk_year>\d{4})\s{1}(?P<disk_title>.+)$")
-        elif self.__PARSING_STYLE == 1:
-            regex = re.compile(r"^(?P<disk_year>\d{4})\s-\s(?P<disk_title>.+)$")
+        regex = movieparse.get_parsing_patters()[self.__PARSING_STYLE]
 
         for index, row in tqdm(self.mapping.iterrows(), desc="getting ids", total=len(self.mapping.index)):
             tmdb_id = self.__DEFAULT
@@ -222,7 +264,7 @@ class movieparse:
                 response.pop(c)
 
             tmp["tmdb_id"] = tmdb_id
-            tmp = pd.DataFrame(movieparse_types(tmp.to_dict()))
+            tmp = pd.DataFrame(movieparse_types(tmp.to_dict()))  # type: ignore
 
             if tmp.empty is False:
                 df = pd.concat([df, tmp], axis=0, ignore_index=True)
@@ -239,7 +281,6 @@ class movieparse:
         ) = results
 
     def _get_metadata(self) -> None:
-
         for tmdb_id in tqdm(self.metadata_lookup_ids, desc="getting metadata"):
             url = f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.__TMDB_API_KEY}&language={self.__LANGUAGE}&append_to_response=credits"
             response = requests.get(url).json()
