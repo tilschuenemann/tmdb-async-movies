@@ -1,4 +1,4 @@
-![Test Badge](https://github.com/tilschuenemann/movieparse/actions/workflows/tests.yml/badge.svg)
+![Test Badge](https://github.com/tilschuenemann/movieparse/actions/workflows/cicd.yml/badge.svg)
 [![CodeCov](https://codecov.io/gh/tilschuenemann/movieparse/branch/coverage/graph/badge.svg?token=B5M10X5EV9)](https://codecov.io/gh/tilschuenemann/movieparse)
 
 # movieparse
