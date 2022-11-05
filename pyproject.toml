@@ -29,6 +29,7 @@ movieparse = "movieparse.cli:main"
 mypy = "^0.982"
 pytest = "^7.2.0"
 mock = "^4.0.3"
+coverage = "^6.5.0"
 
 [tool.black]
 line-length = 120
