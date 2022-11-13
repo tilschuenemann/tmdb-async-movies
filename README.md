@@ -1,10 +1,13 @@
 ![Test Badge](https://github.com/tilschuenemann/movieparse/actions/workflows/CICD.yml/badge.svg)
 [![CodeCov](https://codecov.io/gh/tilschuenemann/movieparse/branch/coverage/graph/badge.svg?token=B5M10X5EV9)](https://codecov.io/gh/tilschuenemann/movieparse)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://tilschuenemann-showcase-showcases0-about-ko9pvy.streamlit.app/movieparse)
 
 # movieparse
 
 `movieparse` is a lazy utility for fetching bulk movie data from [TMDB](https://www.themoviedb.org/) using movie release year and title. It has both an
 Python API and CLI.
+
+[You can find a showcase here.](https://tilschuenemann-showcase-showcases0-about-ko9pvy.streamlit.app/movieparse)
 
 ## Installation & Requirements
 
