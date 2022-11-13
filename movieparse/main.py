@@ -7,8 +7,6 @@ import re
 import requests
 from typing import Set, Optional, Dict, List, Union
 
-from movieparse.type_mapping import movieparse_types
-
 
 class movieparse:
     mapping = pd.DataFrame()
@@ -58,6 +56,13 @@ class movieparse:
             self.__ROOT_MOVIE_DIR = root_movie_dir
             self.__MOVIE_LIST = movie_list
 
+            if movie_list is None and root_movie_dir is not None:
+                self.__strategy = "root_movie_dir"
+            elif root_movie_dir is None and movie_list is not None:
+                self.__strategy = "movielist"
+            else:
+                raise Exception("couldnt determine strategy!")
+
         if output_path is None:
             output_path = pathlib.Path(os.getcwd())
         elif output_path.is_dir() is False:
@@ -96,7 +101,7 @@ class movieparse:
         tmp_path = self.__OUTPUT_PATH / "mapping.csv"
         if tmp_path.exists():
             self.cached_mapping = pd.read_csv(tmp_path)
-            self.cached_mapping["disk_path"] = self.cached_mapping["disk_path"].apply(lambda x: pathlib.Path(x))
+            self.cached_mapping["input"] = self.cached_mapping["input"].apply(lambda x: pathlib.Path(x))
             self.cached_mapping_ids = set(self.cached_mapping["tmdb_id"])
 
     def _read_existing(self) -> None:
@@ -106,8 +111,8 @@ class movieparse:
             tmp_path = self.__OUTPUT_PATH / f"{fname}.csv"
             if tmp_path.exists():
                 df = pd.read_csv(tmp_path)
+                df = self.__assign_types(df)
                 self.cached_metadata_ids |= set(df["tmdb_id"])
-                df = pd.DataFrame(movieparse_types(df.to_dict()))  # type: ignore
             else:
                 df = pd.DataFrame()
             df_list.append(df)
@@ -135,7 +140,7 @@ class movieparse:
         self._get_metadata()
 
     def _create_mapping(self) -> None:
-        if self.__MOVIE_LIST is None and isinstance(self.__ROOT_MOVIE_DIR, pathlib.Path):
+        if self.__strategy == "root_movie_dir":
             names = []
             for folder in self.__ROOT_MOVIE_DIR.iterdir():
                 if folder.is_dir():
@@ -144,15 +149,15 @@ class movieparse:
                 {
                     "tmdb_id": self.__DEFAULT,
                     "tmdb_id_man": self.__DEFAULT,
-                    "disk_path": names,
+                    "input": names,
                 }
             )
-        elif self.__ROOT_MOVIE_DIR is None:
+        elif self.__strategy == "movielist":
             self.mapping = pd.DataFrame(
                 {
                     "tmdb_id": self.__DEFAULT,
                     "tmdb_id_man": self.__DEFAULT,
-                    "disk_path": self.__MOVIE_LIST,
+                    "input": self.__MOVIE_LIST,
                 }
             )
 
@@ -161,13 +166,13 @@ class movieparse:
         the same matches, the first one is used."""
 
         tmp = pd.DataFrame()
-        if self.__MOVIE_LIST is None:
-            tmp["names"] = self.mapping["disk_path"].apply(lambda x: pathlib.Path(x).name)
-        elif self.__ROOT_MOVIE_DIR is None:
-            tmp["names"] = self.mapping["disk_path"]
+        if self.__strategy == "root_movie_dir":
+            tmp["names"] = self.mapping["input"].apply(lambda x: pathlib.Path(x).name)
+        elif self.__strategy == "movielist":
+            tmp["names"] = self.mapping["input"]
 
         max_matches = 0
-        for style, pattern in movieparse.get_parsing_patters().items():
+        for style, pattern in movieparse.get_parsing_patterns().items():
             matches = tmp["names"].str.extract(pattern, expand=True).notnull().sum().sum()
             if matches > max_matches:
                 self.__PARSING_STYLE = style
@@ -181,7 +186,7 @@ class movieparse:
 
     def _update_mapping(self) -> None:
         self.mapping = pd.concat([self.cached_mapping, self.mapping], axis=0, ignore_index=True).drop_duplicates(
-            subset="disk_path", keep="first"
+            subset="input", keep="first"
         )
 
     def _get_id(self, title: str, year: int = -1) -> int:
@@ -221,7 +226,11 @@ class movieparse:
             tmdb_id = self.__DEFAULT
 
             if row["tmdb_id"] == self.__DEFAULT or self.__FORCE_ID_UPDATE:
-                extract = re.match(regex, row["disk_path"].name)
+                if self.__strategy == "root_movie_dir":
+                    extract = re.match(regex, row["input"].name)
+                elif self.__strategy == "movielist":
+                    extract = re.match(regex, row["input"])
+
                 if extract is not None:
                     year = int(extract.group("disk_year"))
                     title = extract.group("disk_title")
@@ -264,7 +273,7 @@ class movieparse:
                 response.pop(c)
 
             tmp["tmdb_id"] = tmdb_id
-            tmp = pd.DataFrame(movieparse_types(tmp.to_dict()))  # type: ignore
+            tmp = self.__assign_types(tmp)
 
             if tmp.empty is False:
                 df = pd.concat([df, tmp], axis=0, ignore_index=True)
@@ -291,3 +300,74 @@ class movieparse:
             tmp_path = self.__OUTPUT_PATH / f"{fname}.csv"
             if df.empty is False:
                 df.to_csv(tmp_path, date_format="%Y-%m-%d", index=False)
+
+    def __assign_types(self, df: pd.DataFrame) -> pd.DataFrame:
+        types = {
+            "tmdb_id": "int32",
+            "tmdb_id_man": "int32",
+            "cast.adult": bool,
+            "cast.gender": "int8",
+            "cast.id": int,
+            "cast.known_for_department": "category",
+            "cast.name": str,
+            "cast.original_name": str,
+            "cast.popularity": float,
+            "cast.profile_path": str,
+            "cast.cast_id": "int8",
+            "cast.character": str,
+            "cast.credit_id": str,
+            "cast.order": "int8",
+            "collection.id": int,
+            "collection.name": str,
+            "collection.poster_path": str,
+            "collection.backdrop_path": str,
+            "crew.adult": bool,
+            "crew.gender": "int8",
+            "crew.id": int,
+            "crew.known_for_department": "category",
+            "crew.name": str,
+            "crew.original_name": str,
+            "crew.popularity": float,
+            "crew.profile_path": str,
+            "crew.credit_id": str,
+            "crew.department": "category",
+            "crew.job": str,
+            "genres.id": "int8",
+            "genres.name": str,
+            "production_companies.id": "int32",
+            "production_companies.logo_path": str,
+            "production_companies.name": "category",
+            "production_companies.origin_country": "category",
+            "production_countries.iso_3166_1": "category",
+            "production_countries.name": str,
+            "spoken_languages.english_name": "category",
+            "spoken_languages.iso_3166_1": "category",
+            "spoken_languages.name": str,
+            "adult": bool,
+            "backdrop_path": str,
+            "budget": int,
+            "homepage": str,
+            "imdb_id": str,
+            "original_language": "category",
+            "original_title": str,
+            "overview": str,
+            "popularity": float,
+            "poster_path": str,
+            "release_date": "datetime64[ns]",
+            "revenue": int,
+            "runtime": "int8",
+            "status": "category",
+            "tagline": str,
+            "title": str,
+            "video": bool,
+            "vote_average": float,
+            "vote_count": "int16",
+        }
+
+        for k, v in types.items():
+            try:
+                df[k] = df[k].astype(v)
+            except KeyError:
+                pass
+
+        return df

@@ -80,14 +80,14 @@ Every parsing style is a regex pattern - incase you want to use a parsing style 
 
 After parsing your files, take a look into mapping.csv:
 
-| disk_path                       | tmdb_id | tmdb_id_man |
+| item                            | tmdb_id | tmdb_id_man |
 | ------------------------------- | ------- | ----------- |
 | /root_movie_dir/1999 The Martix | -1      | 0           |
 
 For some movies the correct TMDB Id cant be looked up due to bad spelling or old year-title combinations. For these movies
 you can add the _tmdb_id_man_ manually:
 
-| disk_path                       | tmdb_id | tmdb_id_man |
+| item                            | tmdb_id | tmdb_id_man |
 | ------------------------------- | ------- | ----------- |
 | /root_movie_dir/1999 The Martix | -1      | _603_       |
 
@@ -107,7 +107,7 @@ The following files will be written:
 mapping.csv                         genres.csv
     tmdb_id                             genres.id
     tmdb_id_man                         genres.name
-    disk_path                           tmdb_id
+    item                                tmdb_id
 
 details.csv                         spoken_languages.csv
     adult                               spoken_languages.english_name

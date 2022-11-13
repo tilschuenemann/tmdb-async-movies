@@ -44,7 +44,7 @@ def multiple_movies(root_movie_dir):
 
 @pytest.fixture
 def mapping_stub(output_path, multiple_movies):
-    mapping_stub = pd.DataFrame({"disk_path": multiple_movies, "tmdb_id": [603, 604, 605], "tmdb_id_man": [0, 0, 777]})
+    mapping_stub = pd.DataFrame({"input": multiple_movies, "tmdb_id": [603, 604, 605], "tmdb_id_man": [0, 0, 777]})
     mapping_stub.to_csv((output_path / "mapping.csv"), index=False)
     return mapping_stub
 
@@ -60,7 +60,7 @@ def test_setup_caches(root_movie_dir, output_path, mapping_stub, multiple_movies
     m = movieparse(root_movie_dir=root_movie_dir, output_path=output_path)
 
     assert set(m.cached_mapping_ids) == set([603, 604, 605])
-    assert set(m.cached_mapping["disk_path"]) == set(multiple_movies)
+    assert set(m.cached_mapping["input"]) == set(multiple_movies)
 
 
 def test_setup_caches_empty(root_movie_dir, output_path):
@@ -99,32 +99,32 @@ def test_estimate_parsing_style(output_path):
 def test_create_mapping_single(root_movie_dir, output_path, single_movie):
     m = movieparse(root_movie_dir, output_path)
     m._create_mapping()
-    assert set(m.mapping["disk_path"]) == set([single_movie])
+    assert set(m.mapping["input"]) == set([single_movie])
     assert m.mapping.shape == (1, 3)
-    assert set(m.mapping.columns) == set(["disk_path", "tmdb_id", "tmdb_id_man"])
+    assert set(m.mapping.columns) == set(["input", "tmdb_id", "tmdb_id_man"])
 
 
 def test_create_mapping_multiple(root_movie_dir, output_path, multiple_movies):
     m = movieparse(root_movie_dir, output_path)
     m._create_mapping()
-    assert set(m.mapping["disk_path"]) == set(multiple_movies)
+    assert set(m.mapping["input"]) == set(multiple_movies)
     assert m.mapping.shape == (3, 3)
-    assert set(m.mapping.columns) == set(["disk_path", "tmdb_id", "tmdb_id_man"])
+    assert set(m.mapping.columns) == set(["input", "tmdb_id", "tmdb_id_man"])
 
 
 def test_create_mapping_empty(root_movie_dir, output_path):
     m = movieparse(root_movie_dir, output_path)
     m._create_mapping()
-    assert set(m.mapping["disk_path"]) == set()
+    assert set(m.mapping["input"]) == set()
     assert m.mapping.shape == (0, 3)
-    assert set(m.mapping.columns) == set(["disk_path", "tmdb_id", "tmdb_id_man"])
+    assert set(m.mapping.columns) == set(["input", "tmdb_id", "tmdb_id_man"])
 
 
 def test_update_mapping_nocache(root_movie_dir, output_path, multiple_movies):
     m = movieparse(root_movie_dir, output_path)
     m._create_mapping()
     m._update_mapping()
-    assert set(m.mapping["disk_path"]) == set(multiple_movies)
+    assert set(m.mapping["input"]) == set(multiple_movies)
     assert set(m.mapping["tmdb_id_man"]) == set([0])
     assert set(m.mapping["tmdb_id"]) == set([0])
 
@@ -181,82 +181,6 @@ def test_dissect_metadata(root_movie_dir, output_path, single_movie):
     assert m.genres.shape[0] == 2
     assert m.prod_comp.shape[0] == 4
     assert m.prod_count.shape[0] == 1
-
-    # correct columns
-    assert set(m.cast.columns) == set(
-        [
-            "cast.adult",
-            "cast.gender",
-            "cast.id",
-            "cast.known_for_department",
-            "cast.name",
-            "cast.original_name",
-            "cast.popularity",
-            "cast.profile_path",
-            "cast.cast_id",
-            "cast.character",
-            "cast.credit_id",
-            "cast.order",
-            "tmdb_id",
-        ]
-    )
-
-    assert set(m.collect.columns) == set(
-        ["collection.id", "collection.name", "collection.poster_path", "collection.backdrop_path", "tmdb_id"]
-    )
-    assert set(m.crew.columns) == set(
-        [
-            "crew.adult",
-            "crew.gender",
-            "crew.id",
-            "crew.known_for_department",
-            "crew.name",
-            "crew.original_name",
-            "crew.popularity",
-            "crew.profile_path",
-            "crew.credit_id",
-            "crew.department",
-            "crew.job",
-            "tmdb_id",
-        ]
-    )
-    assert set(m.details.columns) == set(
-        [
-            "adult",
-            "backdrop_path",
-            "budget",
-            "homepage",
-            "imdb_id",
-            "original_language",
-            "original_title",
-            "overview",
-            "popularity",
-            "poster_path",
-            "release_date",
-            "revenue",
-            "runtime",
-            "status",
-            "tagline",
-            "title",
-            "video",
-            "vote_average",
-            "vote_count",
-            "tmdb_id",
-        ]
-    )
-    assert set(m.prod_comp.columns) == set(
-        [
-            "production_companies.id",
-            "production_companies.logo_path",
-            "production_companies.name",
-            "production_companies.origin_country",
-            "tmdb_id",
-        ]
-    )
-    assert set(m.prod_count.columns) == set(["production_countries.iso_3166_1", "production_countries.name", "tmdb_id"])
-    assert set(m.spoken_langs.columns) == set(
-        ["spoken_languages.english_name", "spoken_languages.iso_639_1", "spoken_languages.name", "tmdb_id"]
-    )
 
 
 def test_get_metadata_empty(root_movie_dir, output_path):
@@ -319,7 +243,7 @@ def test_e2e_badapikey(root_movie_dir, output_path, multiple_movies):
     m = movieparse(root_movie_dir=root_movie_dir, output_path=output_path, tmdb_api_key="wrongapikey")
     m.parse()
     assert set(m.mapping["tmdb_id_man"]) == set([0])
-    assert set(m.mapping["disk_path"]) == set(multiple_movies)
+    assert set(m.mapping["input"]) == set(multiple_movies)
     assert set(m.mapping["tmdb_id"]) == set([-3])
 
     assert m.cast.empty
@@ -330,3 +254,12 @@ def test_e2e_badapikey(root_movie_dir, output_path, multiple_movies):
     assert m.prod_comp.empty
     assert m.prod_count.empty
     assert m.spoken_langs.empty
+
+
+def test_movie_list(output_path):
+    movie_list = ["1999 The Matrix", "2003 The Matrix Reloaded", "2003 The Matrix Revolutions"]
+    m = movieparse(root_movie_dir=None, movie_list=movie_list, output_path=output_path, parsing_style=0)
+    m.parse()
+
+    assert set(m.mapping["tmdb_id_man"]) == set([0])
+    assert set(m.mapping["input"]) == set(movie_list)
