@@ -24,7 +24,7 @@ class movieparse:
     __BAD_RESPONSE = -3
 
     @staticmethod
-    def get_parsing_patters() -> dict[int, re.Pattern]:
+    def get_parsing_patterns() -> dict[int, re.Pattern]:
         return {
             0: re.compile(r"^(?P<disk_year>\d{4})\s{1}(?P<disk_title>.+)$"),
             1: re.compile(r"^(?P<disk_year>\d{4})\s-\s(?P<disk_title>.+)$"),
@@ -71,7 +71,7 @@ class movieparse:
         else:
             exit("please supply a TMDB_API_KEY!")
 
-        if parsing_style not in range(-1, max(movieparse.get_parsing_patters().keys())):
+        if parsing_style not in range(-1, max(movieparse.get_parsing_patterns().keys())):
             exit("please supply a valid PARSING_STYLE!")
         else:
             self.__PARSING_STYLE = parsing_style
@@ -215,7 +215,7 @@ class movieparse:
     def _get_ids(self) -> None:
         tmdb_ids = []
 
-        regex = movieparse.get_parsing_patters()[self.__PARSING_STYLE]
+        regex = movieparse.get_parsing_patterns()[self.__PARSING_STYLE]
 
         for index, row in tqdm(self.mapping.iterrows(), desc="getting ids", total=len(self.mapping.index)):
             tmdb_id = self.__DEFAULT

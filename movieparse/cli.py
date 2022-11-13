@@ -26,7 +26,7 @@ def main() -> None:
         "--parsing_style",
         nargs="?",
         type=int,
-        choices=[0, max(movieparse.get_parsing_patters().keys())],
+        choices=[0, max(movieparse.get_parsing_patterns().keys())],
         default=-1,
         help="Naming convention used - see documentation for examples.",
     )
