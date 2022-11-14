@@ -110,7 +110,8 @@ The following files will be written:
 mapping.csv                         genres.csv
     tmdb_id                             genres.id
     tmdb_id_man                         genres.name
-    item                                tmdb_id
+    input                               tmdb_id
+    canonical_input
 
 details.csv                         spoken_languages.csv
     adult                               spoken_languages.english_name
@@ -153,40 +154,3 @@ cast.csv                            crew.csv
     cast.order                          tmdb_id
     tmdb_id
 ```
-
-## For Developers
-
-The movieparse object exposes the following methods and attributes:
-
-`moviesyms.parse()`
-
-1. It saves all directories inside root_movie_dir in the mapping dataframe.
-2. Mapping is appended to the cached_mapping which was created during initialization. User-supplied tmdb_id_mans are kept while duplicate paths are dropped.
-3. Title and possibly year are extracted from each folder name and the TMDB API is queried for getting the TMDB ID, which is appended in mapping. Mapping.csv gets written.
-4. A set of tmdb_ids and tmdb_id_mans is created for looking up the metadata (cached tmdb_ids are excluded if specified).
-5. Metadata is looked up from the newly created set.
-
-`moviesyms.write()`
-
-- Writes all non-empty metadata tables to output_path destination.
-
-Mapping:
-
-- `moviesyms.mapping`
-
-Metadata dataframes:
-
-- `moviesyms.cast`
-- `moviesyms.collect`
-- `moviesyms.crew`
-- `moviesyms.details`
-- `moviesyms.genres`
-- `moviesyms.prod_comp`
-- `moviesyms.prod_count`
-- `moviesyms.spoken_langs`
-
-Caches:
-
-- `moviesyms.cached_metadata_ids`
-- `moviesyms.cached_ids`
-- `moviesyms.cached_mapping`
