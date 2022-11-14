@@ -56,17 +56,19 @@ def main() -> None:
     args = parser.parse_args()
 
     m = movieparse(
+        output_path=args.output_path,
         tmdb_api_key=args.tmdb_api_key,
         parsing_style=args.parsing_style,
-        root_movie_dir=args.root_movie_dir[0],
-        output_path=args.output_path,
-        strict=args.lax,
-        language=args.language,
         force_id_update=args.eager,
         force_metadata_update=args.eager,
+        strict=args.lax,
+        language=args.language,
     )
 
-    m.parse()
+    if args.root_movie_dir[0] is not None:
+        m.parse_root_movie_dir(args.root_movie_dir[0])
+    elif args.movie_list is not None:
+        m.parse_movielist(args.movie_list)
     m.write()
 
 

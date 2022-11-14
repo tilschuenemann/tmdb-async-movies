@@ -22,7 +22,7 @@ class movieparse:
     __BAD_RESPONSE = -3
 
     @staticmethod
-    def get_parsing_patterns() -> dict[int, re.Pattern]:
+    def get_parsing_patterns() -> dict[int, re.Pattern[str]]:
         return {
             0: re.compile(r"^(?P<disk_year>\d{4})\s{1}(?P<disk_title>.+)$"),
             1: re.compile(r"^(?P<disk_year>\d{4})\s-\s(?P<disk_title>.+)$"),
@@ -30,9 +30,7 @@ class movieparse:
 
     def __init__(
         self,
-        root_movie_dir: pathlib.Path | None = None,
         output_path: pathlib.Path | None = None,
-        movie_list: List[str] | None = None,
         tmdb_api_key: str | None = None,
         parsing_style: int = -1,
         force_id_update: bool = False,
@@ -46,27 +44,10 @@ class movieparse:
         self.__STRICT = strict
         self.__LANGUAGE = language
 
-        if (root_movie_dir is None and movie_list is None) or (
-            root_movie_dir is not None
-            and movie_list is not None
-            and (root_movie_dir.is_dir() is False or not movie_list)
-        ):
-            exit("please supply a ROOT_MOVIE_DIR or a MOVIE_LIST!")
-        else:
-            self.__ROOT_MOVIE_DIR = root_movie_dir
-            self.__MOVIE_LIST = movie_list
-
-            if movie_list is None and root_movie_dir is not None:
-                self.__strategy = "root_movie_dir"
-            elif root_movie_dir is None and movie_list is not None:
-                self.__strategy = "movielist"
-            else:
-                raise Exception("couldnt determine strategy!")
-
         if output_path is None:
             output_path = pathlib.Path(os.getcwd())
         elif output_path.is_dir() is False:
-            exit("please supply a ROOT_MOVIE_DIR that is a directory!")
+            exit("please supply an OUTPUT_DIR that is a directory!")
         self.__OUTPUT_PATH = output_path
 
         if tmdb_api_key is None and os.getenv("TMDB_API_KEY") is not None:
@@ -101,7 +82,6 @@ class movieparse:
         tmp_path = self.__OUTPUT_PATH / "mapping.csv"
         if tmp_path.exists():
             self.cached_mapping = pd.read_csv(tmp_path)
-            self.cached_mapping["input"] = self.cached_mapping["input"].apply(lambda x: pathlib.Path(x))
             self.cached_mapping_ids = set(self.cached_mapping["tmdb_id"])
 
     def _read_existing(self) -> None:
@@ -111,7 +91,7 @@ class movieparse:
             tmp_path = self.__OUTPUT_PATH / f"{fname}.csv"
             if tmp_path.exists():
                 df = pd.read_csv(tmp_path)
-                df = self.__assign_types(df)
+                df = self._assign_types(df)
                 self.cached_metadata_ids |= set(df["tmdb_id"])
             else:
                 df = pd.DataFrame()
@@ -128,9 +108,37 @@ class movieparse:
             self.details,
         ) = df_list
 
-    def parse(self) -> None:
-        self._create_mapping()
+    def parse_movielist(self, movielist: List[str]) -> None:
+        if not movielist:
+            raise Exception("movielist can't be empty!")
 
+        self.mapping = pd.DataFrame(
+            {"tmdb_id": self.__DEFAULT, "tmdb_id_man": self.__DEFAULT, "input": movielist, "canonical_input": movielist}
+        )
+
+        self._generic_parse()
+
+    def parse_root_movie_dir(self, root_movie_dir: pathlib.Path) -> None:
+        if root_movie_dir.is_dir() is False:
+            raise Exception("root_movie_dir has to a directory!")
+
+        names = []
+        for folder in root_movie_dir.iterdir():
+            if folder.is_dir():
+                names.append(folder)
+
+        self.mapping = pd.DataFrame(
+            {
+                "tmdb_id": self.__DEFAULT,
+                "tmdb_id_man": self.__DEFAULT,
+                "input": names,
+                "canonical_input": [x.name for x in names],
+            }
+        )
+
+        self._generic_parse()
+
+    def _generic_parse(self):
         if self.__PARSING_STYLE == -1:
             self._guess_parsing_style()
 
@@ -139,41 +147,14 @@ class movieparse:
         self._update_metadata_lookup_ids()
         self._get_metadata()
 
-    def _create_mapping(self) -> None:
-        if self.__strategy == "root_movie_dir":
-            names = []
-            for folder in self.__ROOT_MOVIE_DIR.iterdir():
-                if folder.is_dir():
-                    names.append(folder)
-            self.mapping = pd.DataFrame(
-                {
-                    "tmdb_id": self.__DEFAULT,
-                    "tmdb_id_man": self.__DEFAULT,
-                    "input": names,
-                }
-            )
-        elif self.__strategy == "movielist":
-            self.mapping = pd.DataFrame(
-                {
-                    "tmdb_id": self.__DEFAULT,
-                    "tmdb_id_man": self.__DEFAULT,
-                    "input": self.__MOVIE_LIST,
-                }
-            )
-
     def _guess_parsing_style(self) -> None:
         """Iterates over supplied names with all parsing styles, determining the most matches. Incase two patterns have
         the same matches, the first one is used."""
 
-        tmp = pd.DataFrame()
-        if self.__strategy == "root_movie_dir":
-            tmp["names"] = self.mapping["input"].apply(lambda x: pathlib.Path(x).name)
-        elif self.__strategy == "movielist":
-            tmp["names"] = self.mapping["input"]
-
+        tmp = self.mapping[["canonical_input"]].copy()
         max_matches = 0
         for style, pattern in movieparse.get_parsing_patterns().items():
-            matches = tmp["names"].str.extract(pattern, expand=True).notnull().sum().sum()
+            matches = tmp["canonical_input"].str.extract(pattern, expand=True).notnull().sum().sum()
             if matches > max_matches:
                 self.__PARSING_STYLE = style
                 max_matches = matches
@@ -186,7 +167,7 @@ class movieparse:
 
     def _update_mapping(self) -> None:
         self.mapping = pd.concat([self.cached_mapping, self.mapping], axis=0, ignore_index=True).drop_duplicates(
-            subset="input", keep="first"
+            subset="canonical_input", keep="first"
         )
 
     def _get_id(self, title: str, year: int = -1) -> int:
@@ -195,7 +176,7 @@ class movieparse:
 
         Returns -1 if no results come back.
         """
-        if year == self.__NO_RESULT:
+        if year != self.__NO_RESULT:
             response = requests.get(
                 f"https://api.themoviedb.org/3/search/movie/?api_key={self.__TMDB_API_KEY}&query={title}&year={year}&include_adult=true"
             ).json()
@@ -218,31 +199,29 @@ class movieparse:
             return self.__BAD_RESPONSE
 
     def _get_ids(self) -> None:
-        tmdb_ids = []
+        def helper(canon_name: str, tmdb_id: int):
+            if tmdb_id != self.__DEFAULT and not self.__FORCE_ID_UPDATE:
+                return tmdb_id
 
-        regex = movieparse.get_parsing_patterns()[self.__PARSING_STYLE]
-
-        for index, row in tqdm(self.mapping.iterrows(), desc="getting ids", total=len(self.mapping.index)):
-            tmdb_id = self.__DEFAULT
-
-            if row["tmdb_id"] == self.__DEFAULT or self.__FORCE_ID_UPDATE:
-                if self.__strategy == "root_movie_dir":
-                    extract = re.match(regex, row["input"].name)
-                elif self.__strategy == "movielist":
-                    extract = re.match(regex, row["input"])
-
-                if extract is not None:
-                    year = int(extract.group("disk_year"))
-                    title = extract.group("disk_title")
-                    tmdb_id = self._get_id(title, year)
-                else:
-                    tmdb_id = self.__NO_EXTRACT
+            regex = movieparse.get_parsing_patterns()[self.__PARSING_STYLE]
+            extract = re.match(regex, canon_name)
+            if extract is not None:
+                year = int(extract.group("disk_year"))
+                title = extract.group("disk_title")
+                tmdb_id = self._get_id(title, year)
             else:
-                tmdb_id = row["tmdb_id"]
+                tmdb_id = self.__NO_EXTRACT
+            return tmdb_id
 
-            tmdb_ids.append(tmdb_id)
+        self.mapping["tmdb_id"] = [
+            helper(x, y)
+            for x, y in tqdm(
+                zip(self.mapping["canonical_input"], self.mapping["tmdb_id"]),
+                total=len(self.mapping.index),
+                desc="getting tmdb_ids",
+            )
+        ]
 
-        self.mapping["tmdb_id"] = tmdb_ids
         self.mapping.to_csv((self.__OUTPUT_PATH / "mapping.csv"), date_format="%Y-%m-%d", index=False)
 
     def _update_metadata_lookup_ids(self) -> None:
@@ -273,7 +252,7 @@ class movieparse:
                 response.pop(c)
 
             tmp["tmdb_id"] = tmdb_id
-            tmp = self.__assign_types(tmp)
+            tmp = self._assign_types(tmp)
 
             if tmp.empty is False:
                 df = pd.concat([df, tmp], axis=0, ignore_index=True)
@@ -301,7 +280,7 @@ class movieparse:
             if df.empty is False:
                 df.to_csv(tmp_path, date_format="%Y-%m-%d", index=False)
 
-    def __assign_types(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _assign_types(self, df: pd.DataFrame) -> pd.DataFrame:
         types = {
             "tmdb_id": "int32",
             "tmdb_id_man": "int32",
