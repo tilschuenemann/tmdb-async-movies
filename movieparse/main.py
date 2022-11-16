@@ -253,6 +253,9 @@ class movieparse:
             tmp = self._assign_types(tmp)
 
             if tmp.empty is False:
+                first_column = tmp.pop("tmdb_id")
+                tmp.insert(0, "tmdb_id", first_column)
+
                 df = pd.concat([df, tmp], axis=0, ignore_index=True)
             results.append(df)
         (
