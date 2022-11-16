@@ -65,8 +65,8 @@ def main() -> None:
         language=args.language,
     )
 
-    if args.root_movie_dir[0] is not None:
-        m.parse_root_movie_dir(args.root_movie_dir[0])
+    if args.root_movie_dir is not None:
+        m.parse_root_movie_dir(args.root_movie_dir)
     elif args.movie_list is not None:
         m.parse_movielist(args.movie_list)
     m.write()
