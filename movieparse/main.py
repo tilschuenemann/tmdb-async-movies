@@ -33,14 +33,12 @@ class movieparse:
         output_path: pathlib.Path | None = None,
         tmdb_api_key: str | None = None,
         parsing_style: int = -1,
-        force_id_update: bool = False,
-        force_metadata_update: bool = False,
+        eager: bool = False,
         strict: bool = False,
         language: str = "en_US",
     ):
 
-        self.__FORCE_ID_UPDATE = force_id_update
-        self.__FORCE_METADATA_UPDATE = force_metadata_update
+        self.__EAGER = eager
         self.__STRICT = strict
         self.__LANGUAGE = language
 
@@ -200,7 +198,7 @@ class movieparse:
 
     def _get_ids(self) -> None:
         def helper(canon_name: str, tmdb_id: int):
-            if tmdb_id != self.__DEFAULT and not self.__FORCE_ID_UPDATE:
+            if tmdb_id != self.__DEFAULT and not self.__EAGER:
                 return tmdb_id
 
             regex = movieparse.get_parsing_patterns()[self.__PARSING_STYLE]
@@ -227,7 +225,7 @@ class movieparse:
     def _update_metadata_lookup_ids(self) -> None:
         self.metadata_lookup_ids = set(self.mapping["tmdb_id"]) | set(self.mapping["tmdb_id_man"])
 
-        if self.__FORCE_METADATA_UPDATE is False:
+        if self.__EAGER is True:
             self.metadata_lookup_ids -= set(self.cached_metadata_ids)
 
         self.metadata_lookup_ids -= set([self.__DEFAULT, self.__NO_RESULT, self.__NO_EXTRACT, self.__BAD_RESPONSE])

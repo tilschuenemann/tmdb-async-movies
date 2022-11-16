@@ -60,8 +60,7 @@ def main() -> None:
         output_path=args.output_path,
         tmdb_api_key=args.tmdb_api_key,
         parsing_style=args.parsing_style,
-        force_id_update=args.eager,
-        force_metadata_update=args.eager,
+        eager=args.eager,
         strict=args.lax,
         language=args.language,
     )
