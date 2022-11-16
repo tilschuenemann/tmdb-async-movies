@@ -1,11 +1,11 @@
-import pandas as pd
-from tqdm import tqdm
-
 import os
 import pathlib
 import re
+from typing import Dict, List, Optional, Set, Union
+
+import pandas as pd
 import requests
-from typing import Set, Optional, Dict, List, Union
+from tqdm import tqdm
 
 
 class movieparse:

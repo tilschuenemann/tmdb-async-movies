@@ -1,7 +1,9 @@
-import pytest
-import pandas as pd
-from movieparse.main import movieparse
 import json
+
+import pandas as pd
+import pytest
+
+from movieparse.main import movieparse
 
 
 @pytest.fixture

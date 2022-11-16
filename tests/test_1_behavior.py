@@ -1,8 +1,10 @@
-from movieparse.main import movieparse
-import pytest
-import pandas as pd
 import os
 import pathlib
+
+import pandas as pd
+import pytest
+
+from movieparse.main import movieparse
 
 
 @pytest.fixture

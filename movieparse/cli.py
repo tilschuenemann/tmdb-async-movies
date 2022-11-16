@@ -1,5 +1,6 @@
 import argparse
 import pathlib
+
 from movieparse.main import movieparse
 
 
