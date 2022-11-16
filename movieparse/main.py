@@ -332,7 +332,7 @@ class movieparse:
             "poster_path": str,
             "release_date": "datetime64[ns]",
             "revenue": int,
-            "runtime": "int8",
+            "runtime": "int16",
             "status": "category",
             "tagline": str,
             "title": str,
