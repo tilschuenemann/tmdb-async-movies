@@ -35,6 +35,15 @@ nox.options.sessions = (
     "docs-build",
 )
 
+TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+TMDB_API_KEY = "None" if TMDB_API_KEY is None else TMDB_API_KEY
+POETRY_TMDB_API_KEY = os.getenv("POETRY_TMDB_API_KEY")
+POETRY_TMDB_API_KEY = "None" if POETRY_TMDB_API_KEY is None else POETRY_TMDB_API_KEY
+env = {
+    "TMDB_API_KEY": TMDB_API_KEY,
+    "POETRY_TMDB_API_KEY": POETRY_TMDB_API_KEY,
+}
+
 
 def activate_virtualenv_in_precommit_hooks(session: Session) -> None:
     """Activate virtualenv in hooks installed by pre-commit.
@@ -155,20 +164,11 @@ def mypy(session: Session) -> None:
     session.run(
         "mypy",
         *args,
-        env={
-            "TMDB_API_KEY": os.getenv("TMDB_API_KEY"),
-            "POETRY_TMDB_API_KEY": os.getenv("POETRY_TMDB_API_KEY"),
-        },
+        env=env,
     )
     if not session.posargs:
         session.run(
-            "mypy",
-            f"--python-executable={sys.executable}",
-            "noxfile.py",
-            env={
-                "TMDB_API_KEY": os.getenv("TMDB_API_KEY"),
-                "POETRY_TMDB_API_KEY": os.getenv("POETRY_TMDB_API_KEY"),
-            },
+            "mypy", f"--python-executable={sys.executable}", "noxfile.py", env=env
         )
 
 
@@ -185,10 +185,7 @@ def tests(session: Session) -> None:
             "-m",
             "pytest",
             *session.posargs,
-            env={
-                "TMDB_API_KEY": os.getenv("TMDB_API_KEY"),
-                "POETRY_TMDB_API_KEY": os.getenv("POETRY_TMDB_API_KEY"),
-            },
+            env=env,
         )
     finally:
         if session.interactive:
@@ -217,10 +214,7 @@ def typeguard(session: Session) -> None:
         "pytest",
         f"--typeguard-packages={package}",
         *session.posargs,
-        env={
-            "TMDB_API_KEY": os.getenv("TMDB_API_KEY"),
-            "POETRY_TMDB_API_KEY": os.getenv("POETRY_TMDB_API_KEY"),
-        },
+        env=env,
     )
 
 
