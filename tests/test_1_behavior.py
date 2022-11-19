@@ -119,19 +119,14 @@ def test_initialization(output_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     f = output_path / "otherfile"
     f.touch()
 
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
+    with pytest.raises(Exception) as exc_info:
         Movieparse(f)
-    assert pytest_wrapped_e.type == SystemExit
-    assert (
-        pytest_wrapped_e.value.code
-        == "please supply an OUTPUT_DIR that is a directory!"
-    )
+    assert str(exc_info.value) == "please supply an OUTPUT_DIR that is a directory!"
 
     # parsing_style has to be supported
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
+    with pytest.raises(Exception) as exc_info:
         Movieparse(parsing_style=999)
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == "please supply a valid PARSING_STYLE!"
+    assert str(exc_info.value) == "please supply a valid PARSING_STYLE!"
 
     # caches are read correctly
     m = Movieparse(output_path=output_path)
@@ -151,10 +146,9 @@ def test_initialization(output_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
 
     # error if no api key is supplied
     monkeypatch.delenv("TMDB_API_KEY")
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
+    with pytest.raises(Exception) as exc_info:
         Movieparse()
-    assert pytest_wrapped_e.type == SystemExit
-    assert pytest_wrapped_e.value.code == "please supply a TMDB_API_KEY!"
+    assert str(exc_info.value) == "please supply a TMDB_API_KEY!"
 
     # supply api key
     m = Movieparse(tmdb_api_key="example-key")
@@ -175,10 +169,9 @@ def test_guess_parsing_style() -> None:
 
     # no matches throws error
     m = Movieparse()
-    with pytest.raises(SystemExit) as pytest_wrapped_e:
+    with pytest.raises(Exception) as exc_info:
         m.parse_movielist(movielist=["Fight Club"])
-    assert pytest_wrapped_e.type == SystemExit
     assert (
-        pytest_wrapped_e.value.code
+        str(exc_info.value)
         == "couldn't estimate a parsing style, please supply one for yourself!"
     )
