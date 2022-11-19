@@ -72,6 +72,8 @@ def activate_virtualenv_in_precommit_hooks(session: Session) -> None:
             """,
         # pre-commit >= 2.16.0
         "bash": f"""\
+            TMDB_API_KEY={os.getenv("TMDB_API_KEY")}
+            POETRY_TMDB_API_KEY={os.getenv("POETRY_TMDB_API_KEY")}
             VIRTUAL_ENV={shlex.quote(virtualenv)}
             PATH={shlex.quote(session.bin)}"{os.pathsep}$PATH"
             """,
