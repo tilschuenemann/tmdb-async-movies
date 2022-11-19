@@ -1,15 +1,32 @@
+"""A one line summary of the module or program, terminated by a period.
+
+Leave one blank line.  The rest of this docstring should contain an
+overall description of the module or program.  Optionally, it may also
+contain a brief description of exported classes and functions and/or usage
+examples.
+
+Typical usage example:
+
+foo = ClassFoo()
+bar = foo.FunctionBar()
+"""
+
 import argparse
 import pathlib
 
-from movieparse.main import movieparse
+from movieparse.main import Movieparse
 
 
 def main() -> None:
+    """Entrypoint for CLI."""
     parser = argparse.ArgumentParser(prog="tmdb_parser")
 
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
-        "--root_movie_dir", nargs="?", type=pathlib.Path, help="Directory containing your movie folders."
+        "--root_movie_dir",
+        nargs="?",
+        type=pathlib.Path,
+        help="Directory containing your movie folders.",
     )
     group.add_argument(
         "--movie_list",
@@ -27,7 +44,7 @@ def main() -> None:
         "--parsing_style",
         nargs="?",
         type=int,
-        choices=[0, max(movieparse.get_parsing_patterns().keys())],
+        choices=[0, max(Movieparse.get_parsing_patterns().keys())],
         default=-1,
         help="Naming convention used - see documentation for examples.",
     )
@@ -51,12 +68,14 @@ def main() -> None:
         help="ISO-639-1 language shortcode for specifying result language. Defaults to en_US.",
     )
     parser.add_argument(
-        "--eager", action="store_true", help="Using this will refetch all IDs and metadata without accessing the cache."
+        "--eager",
+        action="store_true",
+        help="Using this will refetch all IDs and metadata without accessing the cache.",
     )
 
     args = parser.parse_args()
 
-    m = movieparse(
+    m = Movieparse(
         output_path=args.output_path,
         tmdb_api_key=args.tmdb_api_key,
         parsing_style=args.parsing_style,

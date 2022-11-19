@@ -1,16 +1,44 @@
+"""A one line summary of the module or program, terminated by a period.
+
+Leave one blank line.  The rest of this docstring should contain an
+overall description of the module or program.  Optionally, it may also
+contain a brief description of exported classes and functions and/or usage
+examples.
+
+Typical usage example:
+
+foo = ClassFoo()
+bar = foo.FunctionBar()
+"""
+
 import os
-import pathlib
 import re
-from typing import Dict, List, Optional, Set, Union
+from pathlib import Path
+from typing import Dict
+from typing import List
+from typing import Set
 
 import pandas as pd
 import requests
 from tqdm import tqdm
 
 
-class movieparse:
+class Movieparse:
+    """Desc.
+
+    Attributes:
+      output_path: path where metadata gets written to
+      tmdb_api_key: api key for TMDB
+      parsing_style: int
+      eager: bool whether
+      strict: bool whether
+      language: ISO shortcode
+    """
+
     mapping = pd.DataFrame()
-    cast = collect = crew = details = genres = prod_comp = prod_count = spoken_langs = pd.DataFrame()
+    cast = (
+        collect
+    ) = crew = details = genres = prod_comp = prod_count = spoken_langs = pd.DataFrame()
     cached_mapping_ids: Set[int] = set()
     cached_metadata_ids: Set[int] = set()
     cached_mapping = pd.DataFrame()
@@ -23,6 +51,11 @@ class movieparse:
 
     @staticmethod
     def get_parsing_patterns() -> dict[int, re.Pattern[str]]:
+        """Lists all valid patterns for extracting title and release year from input.
+
+        Returns:
+          A dict mapping integer keys to their regex pattern
+        """
         return {
             0: re.compile(r"^(?P<disk_year>\d{4})\s{1}(?P<disk_title>.+)$"),
             1: re.compile(r"^(?P<disk_year>\d{4})\s-\s(?P<disk_title>.+)$"),
@@ -30,20 +63,20 @@ class movieparse:
 
     def __init__(
         self,
-        output_path: pathlib.Path | None = None,
+        output_path: Path | None = None,
         tmdb_api_key: str | None = None,
         parsing_style: int = -1,
         eager: bool = False,
         strict: bool = False,
         language: str = "en_US",
     ):
-
+        """Initilizes movieparser."""
         self.__EAGER = eager
         self.__STRICT = strict
         self.__LANGUAGE = language
 
         if output_path is None:
-            output_path = pathlib.Path(os.getcwd())
+            output_path = Path(os.getcwd())
         elif output_path.is_dir() is False:
             exit("please supply an OUTPUT_DIR that is a directory!")
         self.__OUTPUT_PATH = output_path
@@ -55,7 +88,9 @@ class movieparse:
         else:
             exit("please supply a TMDB_API_KEY!")
 
-        if parsing_style not in range(-1, max(movieparse.get_parsing_patterns().keys())):
+        if parsing_style not in range(
+            -1, max(Movieparse.get_parsing_patterns().keys())
+        ):
             exit("please supply a valid PARSING_STYLE!")
         else:
             self.__PARSING_STYLE = parsing_style
@@ -107,16 +142,31 @@ class movieparse:
         ) = df_list
 
     def parse_movielist(self, movielist: List[str]) -> None:
+        """Parse movie metadata from movielist.
+
+        Args:
+          movielist: List of titles (and optionally release years)
+        """
         if not movielist:
             raise Exception("movielist can't be empty!")
 
         self.mapping = pd.DataFrame(
-            {"tmdb_id": self.__DEFAULT, "tmdb_id_man": self.__DEFAULT, "input": movielist, "canonical_input": movielist}
+            {
+                "tmdb_id": self.__DEFAULT,
+                "tmdb_id_man": self.__DEFAULT,
+                "input": movielist,
+                "canonical_input": movielist,
+            }
         )
 
         self._generic_parse()
 
-    def parse_root_movie_dir(self, root_movie_dir: pathlib.Path) -> None:
+    def parse_root_movie_dir(self, root_movie_dir: Path) -> None:
+        """Parse movie metadata from folders inside root_movie_dir.
+
+        Args:
+          root_movie_dir: directory where movie subfolders lie
+        """
         if root_movie_dir.is_dir() is False:
             raise Exception("root_movie_dir has to a directory!")
 
@@ -136,7 +186,7 @@ class movieparse:
 
         self._generic_parse()
 
-    def _generic_parse(self):
+    def _generic_parse(self) -> None:
         if self.__PARSING_STYLE == -1:
             self._guess_parsing_style()
 
@@ -146,13 +196,20 @@ class movieparse:
         self._get_metadata()
 
     def _guess_parsing_style(self) -> None:
-        """Iterates over supplied names with all parsing styles, determining the most matches. Incase two patterns have
-        the same matches, the first one is used."""
+        """Iterates over supplied names with all parsing styles, determining the most matches.
 
+        Incase two patterns have the same matches, the first one is used.
+        """
         tmp = self.mapping[["canonical_input"]].copy()
         max_matches = 0
-        for style, pattern in movieparse.get_parsing_patterns().items():
-            matches = tmp["canonical_input"].str.extract(pattern, expand=True).notnull().sum().sum()
+        for style, pattern in Movieparse.get_parsing_patterns().items():
+            matches = (
+                tmp["canonical_input"]
+                .str.extract(pattern, expand=True)
+                .notnull()
+                .sum()
+                .sum()
+            )
             if matches > max_matches:
                 self.__PARSING_STYLE = style
                 max_matches = matches
@@ -161,19 +218,17 @@ class movieparse:
             exit("couldn't estimate a parsing style, please supply one for yourself!")
 
         max_items = len(tmp.index) * 2
-        print(f"estimated best parsing style: {self.__PARSING_STYLE} with {max_matches} / {max_items} matches")
-
-    def _update_mapping(self) -> None:
-        self.mapping = pd.concat([self.cached_mapping, self.mapping], axis=0, ignore_index=True).drop_duplicates(
-            subset="canonical_input", keep="first"
+        print(
+            f"estimated best parsing style: {self.__PARSING_STYLE} with {max_matches} / {max_items} matches"
         )
 
-    def _get_id(self, title: str, year: int = -1) -> int:
-        """Creates API request with title and year. If that fails,
-        creates another with just the title (if STRICT=False).
+    def _update_mapping(self) -> None:
+        self.mapping = pd.concat(
+            [self.cached_mapping, self.mapping], axis=0, ignore_index=True
+        ).drop_duplicates(subset="canonical_input", keep="first")
 
-        Returns -1 if no results come back.
-        """
+    def _get_id(self, title: str, year: int = -1) -> int:
+        """Creates API request with title and year; if that fails, creates another with just the title (if STRICT=False)."""
         if year != self.__NO_RESULT:
             response = requests.get(
                 f"https://api.themoviedb.org/3/search/movie/?api_key={self.__TMDB_API_KEY}&query={title}&year={year}&include_adult=true"
@@ -197,11 +252,11 @@ class movieparse:
             return self.__BAD_RESPONSE
 
     def _get_ids(self) -> None:
-        def helper(canon_name: str, tmdb_id: int):
+        def helper(canon_name: str, tmdb_id: int) -> int:
             if tmdb_id != self.__DEFAULT and not self.__EAGER:
                 return tmdb_id
 
-            regex = movieparse.get_parsing_patterns()[self.__PARSING_STYLE]
+            regex = Movieparse.get_parsing_patterns()[self.__PARSING_STYLE]
             extract = re.match(regex, canon_name)
             if extract is not None:
                 year = int(extract.group("disk_year"))
@@ -220,26 +275,41 @@ class movieparse:
             )
         ]
 
-        self.mapping.to_csv((self.__OUTPUT_PATH / "mapping.csv"), date_format="%Y-%m-%d", index=False)
+        self.mapping.to_csv(
+            (self.__OUTPUT_PATH / "mapping.csv"), date_format="%Y-%m-%d", index=False
+        )
 
     def _update_metadata_lookup_ids(self) -> None:
-        self.metadata_lookup_ids = set(self.mapping["tmdb_id"]) | set(self.mapping["tmdb_id_man"])
+        self.metadata_lookup_ids = set(self.mapping["tmdb_id"]) | set(
+            self.mapping["tmdb_id_man"]
+        )
 
         if self.__EAGER is True:
             self.metadata_lookup_ids -= set(self.cached_metadata_ids)
 
-        self.metadata_lookup_ids -= set([self.__DEFAULT, self.__NO_RESULT, self.__NO_EXTRACT, self.__BAD_RESPONSE])
+        self.metadata_lookup_ids -= {
+            self.__DEFAULT,
+            self.__NO_RESULT,
+            self.__NO_EXTRACT,
+            self.__BAD_RESPONSE,
+        }
 
-    def _dissect_metadata_response(self, response: Dict[str, pd.DataFrame], tmdb_id: int) -> None:
+    def _dissect_metadata_response(
+        self, response: Dict[str, object], tmdb_id: int
+    ) -> None:
         results = []
         for c, df in self._table_iter().items():
             tmp = pd.DataFrame()
 
             if c in ["cast", "crew"]:
-                tmp = pd.json_normalize(response["credits"], record_path=c).add_prefix(f"{c}.")
+                tmp = pd.json_normalize(response["credits"], record_path=c).add_prefix(
+                    f"{c}."
+                )
             elif c == "collection":
                 if response["belongs_to_collection"] is not None:
-                    tmp = pd.json_normalize(response["belongs_to_collection"]).add_prefix(f"{c}.")
+                    tmp = pd.json_normalize(
+                        response["belongs_to_collection"]
+                    ).add_prefix(f"{c}.")
                 response.pop("belongs_to_collection")
             elif c == "details":
                 response.pop("credits")
@@ -271,11 +341,17 @@ class movieparse:
 
     def _get_metadata(self) -> None:
         for tmdb_id in tqdm(self.metadata_lookup_ids, desc="getting metadata"):
-            url = f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.__TMDB_API_KEY}&language={self.__LANGUAGE}&append_to_response=credits"
+            url = "".join(
+                [
+                    f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.__TMDB_API_KEY}",
+                    f"&language={self.__LANGUAGE}&append_to_response=credits",
+                ]
+            )
             response = requests.get(url).json()
             self._dissect_metadata_response(response, tmdb_id)
 
     def write(self) -> None:
+        """Writes all non-empty metadata dataframes as CSV files to output_path."""
         for fname, df in self._table_iter().items():
             tmp_path = self.__OUTPUT_PATH / f"{fname}.csv"
             if df.empty is False:
