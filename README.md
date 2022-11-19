@@ -23,11 +23,15 @@
 
 ## Features
 
-- TODO
+`movieparse` is a lazy utility for fetching bulk movie data from [TMDB](https://www.themoviedb.org/) using movie release year and title. It has both an Python API and CLI.
 
 ## Requirements
 
-- TODO
+You'll need to have a TMDB API key in order to make API requests. Either specify it on initialization of Movieparse or add it as environment variable:
+
+```bash
+$ export TMDB_API_KEY="your_api_key_here"
+```
 
 ## Installation
 
