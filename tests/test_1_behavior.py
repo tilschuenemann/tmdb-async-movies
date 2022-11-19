@@ -53,9 +53,9 @@ def multiple_movies(root_movie_dir: Path) -> List[Path]:
     """Creates a multiple movie folders inside the root_movie_dir.
 
     Args:
-        root_movie_dir: root_movie_dir fixture
+      root_movie_dir: root_movie_dir fixture
     Returns:
-        list of paths of movie folders
+      list of paths of movie folders
     """
     paths = []
     for subdir in [

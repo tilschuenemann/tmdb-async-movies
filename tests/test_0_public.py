@@ -66,9 +66,9 @@ def single_movie_conv2(root_movie_dir: Path) -> Path:
     """Creates a single movie folder inside the root_movie_dir, using another naming convention.
 
     Args:
-        root_movie_dir: root_movie_dir fixture
+      root_movie_dir: root_movie_dir fixture
     Returns:
-        single movie folder as path
+      single movie folder as path
     """
     tmp = root_movie_dir / "1999 - Fight Club"
     tmp.mkdir()
@@ -80,7 +80,7 @@ def multiple_movies(root_movie_dir: Path) -> List[Path]:
     """Creates a multiple movie folders inside the root_movie_dir.
 
     Args:
-        root_movie_dir: root_movie_dir fixture
+      root_movie_dir: root_movie_dir fixture
     Returns:
       list of paths of movie folders
     """
