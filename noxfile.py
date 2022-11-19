@@ -146,36 +146,50 @@ def safety(session: Session) -> None:
     session.run("safety", "check", "--full-report", f"--file={requirements}")
 
 
-@session(
-    python=python_versions,
-    env={
-        "TMDB_API_KEY": os.getenv("TMDB_API_KEY"),
-        "POETRY_TMDB_API_KEY": os.getenv("POETRY_TMDB_API_KEY"),
-    },
-)
+@session(python=python_versions)
 def mypy(session: Session) -> None:
     """Type-check using mypy."""
     args = session.posargs or ["src", "tests", "docs/conf.py"]
     session.install(".")
     session.install("mypy", "pytest", "types-requests")
-    session.run("mypy", *args)
+    session.run(
+        "mypy",
+        *args,
+        env={
+            "TMDB_API_KEY": os.getenv("TMDB_API_KEY"),
+            "POETRY_TMDB_API_KEY": os.getenv("POETRY_TMDB_API_KEY"),
+        },
+    )
     if not session.posargs:
-        session.run("mypy", f"--python-executable={sys.executable}", "noxfile.py")
+        session.run(
+            "mypy",
+            f"--python-executable={sys.executable}",
+            "noxfile.py",
+            env={
+                "TMDB_API_KEY": os.getenv("TMDB_API_KEY"),
+                "POETRY_TMDB_API_KEY": os.getenv("POETRY_TMDB_API_KEY"),
+            },
+        )
 
 
-@session(
-    python=python_versions,
-    env={
-        "TMDB_API_KEY": os.getenv("TMDB_API_KEY"),
-        "POETRY_TMDB_API_KEY": os.getenv("POETRY_TMDB_API_KEY"),
-    },
-)
+@session(python=python_versions)
 def tests(session: Session) -> None:
     """Run the test suite."""
     session.install(".")
     session.install("coverage[toml]", "pytest", "pygments")
     try:
-        session.run("coverage", "run", "--parallel", "-m", "pytest", *session.posargs)
+        session.run(
+            "coverage",
+            "run",
+            "--parallel",
+            "-m",
+            "pytest",
+            *session.posargs,
+            env={
+                "TMDB_API_KEY": os.getenv("TMDB_API_KEY"),
+                "POETRY_TMDB_API_KEY": os.getenv("POETRY_TMDB_API_KEY"),
+            },
+        )
     finally:
         if session.interactive:
             session.notify("coverage", posargs=[])
@@ -194,18 +208,20 @@ def coverage(session: Session) -> None:
     session.run("coverage", *args)
 
 
-@session(
-    python=python_versions[0],
-    env={
-        "TMDB_API_KEY": os.getenv("TMDB_API_KEY"),
-        "POETRY_TMDB_API_KEY": os.getenv("POETRY_TMDB_API_KEY"),
-    },
-)
+@session(python=python_versions[0])
 def typeguard(session: Session) -> None:
     """Runtime type checking using Typeguard."""
     session.install(".")
     session.install("pytest", "typeguard", "pygments")
-    session.run("pytest", f"--typeguard-packages={package}", *session.posargs)
+    session.run(
+        "pytest",
+        f"--typeguard-packages={package}",
+        *session.posargs,
+        env={
+            "TMDB_API_KEY": os.getenv("TMDB_API_KEY"),
+            "POETRY_TMDB_API_KEY": os.getenv("POETRY_TMDB_API_KEY"),
+        },
+    )
 
 
 @session(python=python_versions)
