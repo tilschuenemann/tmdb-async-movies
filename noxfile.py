@@ -35,15 +35,6 @@ nox.options.sessions = (
     "docs-build",
 )
 
-TMDB_API_KEY = os.getenv("TMDB_API_KEY")
-TMDB_API_KEY = "None" if TMDB_API_KEY is None else TMDB_API_KEY
-POETRY_TMDB_API_KEY = os.getenv("POETRY_TMDB_API_KEY")
-POETRY_TMDB_API_KEY = "None" if POETRY_TMDB_API_KEY is None else POETRY_TMDB_API_KEY
-env = {
-    "TMDB_API_KEY": TMDB_API_KEY,
-    "POETRY_TMDB_API_KEY": POETRY_TMDB_API_KEY,
-}
-
 
 def activate_virtualenv_in_precommit_hooks(session: Session) -> None:
     """Activate virtualenv in hooks installed by pre-commit.
@@ -161,15 +152,9 @@ def mypy(session: Session) -> None:
     args = session.posargs or ["src", "tests", "docs/conf.py"]
     session.install(".")
     session.install("mypy", "pytest", "types-requests")
-    session.run(
-        "mypy",
-        *args,
-        env=env,
-    )
+    session.run("mypy", *args)
     if not session.posargs:
-        session.run(
-            "mypy", f"--python-executable={sys.executable}", "noxfile.py", env=env
-        )
+        session.run("mypy", f"--python-executable={sys.executable}", "noxfile.py")
 
 
 @session(python=python_versions)
@@ -178,15 +163,7 @@ def tests(session: Session) -> None:
     session.install(".")
     session.install("coverage[toml]", "pytest", "pygments")
     try:
-        session.run(
-            "coverage",
-            "run",
-            "--parallel",
-            "-m",
-            "pytest",
-            *session.posargs,
-            env=env,
-        )
+        session.run("coverage", "run", "--parallel", "-m", "pytest", *session.posargs)
     finally:
         if session.interactive:
             session.notify("coverage", posargs=[])
@@ -202,7 +179,7 @@ def coverage(session: Session) -> None:
     if not session.posargs and any(Path().glob(".coverage.*")):
         session.run("coverage", "combine")
 
-    session.run("coverage", *args, env=env)
+    session.run("coverage", *args)
 
 
 @session(python=python_versions[0])
@@ -210,12 +187,7 @@ def typeguard(session: Session) -> None:
     """Runtime type checking using Typeguard."""
     session.install(".")
     session.install("pytest", "typeguard", "pygments")
-    session.run(
-        "pytest",
-        f"--typeguard-packages={package}",
-        *session.posargs,
-        env=env,
-    )
+    session.run("pytest", f"--typeguard-packages={package}", *session.posargs)
 
 
 @session(python=python_versions)
