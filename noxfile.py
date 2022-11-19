@@ -72,8 +72,6 @@ def activate_virtualenv_in_precommit_hooks(session: Session) -> None:
             """,
         # pre-commit >= 2.16.0
         "bash": f"""\
-            TMDB_API_KEY={os.getenv("TMDB_API_KEY")}
-            POETRY_TMDB_API_KEY={os.getenv("POETRY_TMDB_API_KEY")}
             VIRTUAL_ENV={shlex.quote(virtualenv)}
             PATH={shlex.quote(session.bin)}"{os.pathsep}$PATH"
             """,
@@ -148,7 +146,13 @@ def safety(session: Session) -> None:
     session.run("safety", "check", "--full-report", f"--file={requirements}")
 
 
-@session(python=python_versions)
+@session(
+    python=python_versions,
+    env={
+        "TMDB_API_KEY": os.getenv("TMDB_API_KEY"),
+        "POETRY_TMDB_API_KEY": os.getenv("POETRY_TMDB_API_KEY"),
+    },
+)
 def mypy(session: Session) -> None:
     """Type-check using mypy."""
     args = session.posargs or ["src", "tests", "docs/conf.py"]
@@ -159,7 +163,13 @@ def mypy(session: Session) -> None:
         session.run("mypy", f"--python-executable={sys.executable}", "noxfile.py")
 
 
-@session(python=python_versions)
+@session(
+    python=python_versions,
+    env={
+        "TMDB_API_KEY": os.getenv("TMDB_API_KEY"),
+        "POETRY_TMDB_API_KEY": os.getenv("POETRY_TMDB_API_KEY"),
+    },
+)
 def tests(session: Session) -> None:
     """Run the test suite."""
     session.install(".")
@@ -184,7 +194,13 @@ def coverage(session: Session) -> None:
     session.run("coverage", *args)
 
 
-@session(python=python_versions[0])
+@session(
+    python=python_versions[0],
+    env={
+        "TMDB_API_KEY": os.getenv("TMDB_API_KEY"),
+        "POETRY_TMDB_API_KEY": os.getenv("POETRY_TMDB_API_KEY"),
+    },
+)
 def typeguard(session: Session) -> None:
     """Runtime type checking using Typeguard."""
     session.install(".")
