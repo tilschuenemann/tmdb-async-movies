@@ -27,7 +27,7 @@ class Movieparse:
     """Desc.
 
     Attributes:
-      output_path: path where metadata gets written to
+      output_dir: path where metadata gets written to
       tmdb_api_key: api key for TMDB
       parsing_style: int
       eager: bool whether
@@ -63,7 +63,7 @@ class Movieparse:
 
     def __init__(
         self,
-        output_path: Path | None = None,
+        output_dir: Path | None = None,
         tmdb_api_key: str | None = None,
         parsing_style: int = -1,
         eager: bool = False,
@@ -75,11 +75,11 @@ class Movieparse:
         self.__STRICT = strict
         self.__LANGUAGE = language
 
-        if output_path is None:
-            output_path = Path(os.getcwd())
-        elif output_path.is_dir() is False:
+        if output_dir is None:
+            output_dir = Path(os.getcwd())
+        elif output_dir.is_dir() is False:
             exit("please supply an OUTPUT_DIR that is a directory!")
-        self.__OUTPUT_PATH = output_path
+        self.__OUTPUT_DIR = output_dir
 
         if tmdb_api_key is None and os.getenv("TMDB_API_KEY") is not None:
             self.__TMDB_API_KEY = os.getenv("TMDB_API_KEY")
@@ -112,7 +112,7 @@ class Movieparse:
         }
 
     def _setup_caches(self) -> None:
-        tmp_path = self.__OUTPUT_PATH / "mapping.csv"
+        tmp_path = self.__OUTPUT_DIR / "mapping.csv"
         if tmp_path.exists():
             self.cached_mapping = pd.read_csv(tmp_path)
             self.cached_mapping_ids = set(self.cached_mapping["tmdb_id"])
@@ -121,7 +121,7 @@ class Movieparse:
         """Reads metadata CSVs if existing and appends tmdb_ids to cached_metadata_ids."""
         df_list = []
         for fname, df in self._table_iter().items():
-            tmp_path = self.__OUTPUT_PATH / f"{fname}.csv"
+            tmp_path = self.__OUTPUT_DIR / f"{fname}.csv"
             if tmp_path.exists():
                 df = pd.read_csv(tmp_path)
                 df = self._assign_types(df)
@@ -276,7 +276,7 @@ class Movieparse:
         ]
 
         self.mapping.to_csv(
-            (self.__OUTPUT_PATH / "mapping.csv"), date_format="%Y-%m-%d", index=False
+            (self.__OUTPUT_DIR / "mapping.csv"), date_format="%Y-%m-%d", index=False
         )
 
     def _update_metadata_lookup_ids(self) -> None:
@@ -351,9 +351,9 @@ class Movieparse:
             self._dissect_metadata_response(response, tmdb_id)
 
     def write(self) -> None:
-        """Writes all non-empty metadata dataframes as CSV files to output_path."""
+        """Writes all non-empty metadata dataframes as CSV files to output_dir."""
         for fname, df in self._table_iter().items():
-            tmp_path = self.__OUTPUT_PATH / f"{fname}.csv"
+            tmp_path = self.__OUTPUT_DIR / f"{fname}.csv"
             if df.empty is False:
                 df.to_csv(tmp_path, date_format="%Y-%m-%d", index=False)
 

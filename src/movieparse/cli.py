@@ -49,10 +49,10 @@ def main() -> None:
         help="Naming convention used - see documentation for examples.",
     )
     parser.add_argument(
-        "--output_path",
+        "--output_dir",
         nargs="?",
         type=pathlib.Path,
-        help="Path to directory where output CSVs get written to. Defaults to current directory.",
+        help="Directory where output CSVs get written to. Defaults to current directory.",
     )
     parser.add_argument(
         "--lax",
@@ -76,7 +76,7 @@ def main() -> None:
     args = parser.parse_args()
 
     m = Movieparse(
-        output_path=args.output_path,
+        output_dir=args.output_dir,
         tmdb_api_key=args.tmdb_api_key,
         parsing_style=args.parsing_style,
         eager=args.eager,
