@@ -78,7 +78,7 @@ class Movieparse:
         if output_dir is None:
             output_dir = Path(os.getcwd())
         elif output_dir.is_dir() is False:
-            exit("please supply an OUTPUT_DIR that is a directory!")
+            raise Exception("please supply an OUTPUT_DIR that is a directory!")
         self.__OUTPUT_DIR = output_dir
 
         if tmdb_api_key is None and os.getenv("TMDB_API_KEY") is not None:
@@ -86,12 +86,12 @@ class Movieparse:
         elif tmdb_api_key is not None:
             self.__TMDB_API_KEY = tmdb_api_key
         else:
-            exit("please supply a TMDB_API_KEY!")
+            raise Exception("please supply a TMDB_API_KEY!")
 
         if parsing_style not in range(
             -1, max(Movieparse.get_parsing_patterns().keys())
         ):
-            exit("please supply a valid PARSING_STYLE!")
+            raise Exception("please supply a valid PARSING_STYLE!")
         else:
             self.__PARSING_STYLE = parsing_style
 
@@ -215,7 +215,9 @@ class Movieparse:
                 max_matches = matches
 
         if max_matches == 0 and self.__PARSING_STYLE == -1:
-            exit("couldn't estimate a parsing style, please supply one for yourself!")
+            raise Exception(
+                "couldn't estimate a parsing style, please supply one for yourself!"
+            )
 
         max_items = len(tmp.index) * 2
         print(
