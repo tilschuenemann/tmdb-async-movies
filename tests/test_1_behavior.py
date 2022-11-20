@@ -21,7 +21,7 @@ from movieparse.main import Movieparse
 
 
 @pytest.fixture
-def output_path(tmp_path: Path) -> Path:
+def output_dir(tmp_path: Path) -> Path:
     """Creates output_dir.
 
     Args:
@@ -29,9 +29,9 @@ def output_path(tmp_path: Path) -> Path:
     Returns:
       output_dir as path
     """
-    output_path = tmp_path / "output_path"
-    output_path.mkdir()
-    return output_path
+    output_dir = tmp_path / "output_dir"
+    output_dir.mkdir()
+    return output_dir
 
 
 @pytest.fixture
@@ -70,7 +70,7 @@ def multiple_movies(root_movie_dir: Path) -> List[Path]:
 
 
 @pytest.fixture
-def mapping_stub(output_path: Path, multiple_movies: List[Path]) -> pd.DataFrame:
+def mapping_stub(output_dir: Path, multiple_movies: List[Path]) -> pd.DataFrame:
     """Creates a mapping stub."""
     mapping_stub = pd.DataFrame(
         {
@@ -80,24 +80,24 @@ def mapping_stub(output_path: Path, multiple_movies: List[Path]) -> pd.DataFrame
             "tmdb_id_man": [0, 777, 888],
         }
     )
-    mapping_stub.to_csv((output_path / "mapping.csv"), index=False)
+    mapping_stub.to_csv((output_dir / "mapping.csv"), index=False)
     return mapping_stub
 
 
-def test_persist_custom_ids(output_path: Path, mapping_stub: pd.DataFrame) -> None:
+def test_persist_custom_ids(output_dir: Path, mapping_stub: pd.DataFrame) -> None:
     """Check that mapping custom ids dont get deleted or overwritten.
 
     Args:
-      output_path: output_path fixture
+      output_dir: output_dir fixture
       mapping_stub: mapping_stub fixture
     """
-    m = Movieparse(output_path=output_path)
+    m = Movieparse(output_dir=output_dir)
     m.parse_movielist(["1999 Fight Club"])
     assert set(m.mapping["tmdb_id_man"]) == {0, 777, 888}
-    (output_path / "mapping.csv").unlink()
+    (output_dir / "mapping.csv").unlink()
 
 
-def test_initialization(output_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_initialization(output_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Tests Movieparse object initialization.
 
     Init behavior should include:
@@ -107,16 +107,16 @@ def test_initialization(output_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     * metadata in output_dir should be read correctly
     * an API key has to be supplied either by env var or manually
     Args:
-      output_path: output_path fixture
+      output_dir: output_dir fixture
       monkeypatch: monkeypatch fixture
     """
     # create sample data
-    m = Movieparse(output_path=output_path)
+    m = Movieparse(output_dir=output_dir)
     m.parse_movielist(["1999 Fight Club"])
     m.write()
 
     # output dir cant be a file
-    f = output_path / "otherfile"
+    f = output_dir / "otherfile"
     f.touch()
 
     with pytest.raises(Exception) as exc_info:
@@ -129,7 +129,7 @@ def test_initialization(output_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
     assert str(exc_info.value) == "please supply a valid PARSING_STYLE!"
 
     # caches are read correctly
-    m = Movieparse(output_path=output_path)
+    m = Movieparse(output_dir=output_dir)
     assert m.cached_mapping.empty is False
     assert set(m.cached_mapping_ids) == {550}
     assert set(m.cached_metadata_ids) == {550}

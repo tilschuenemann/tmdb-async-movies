@@ -20,7 +20,7 @@ from movieparse.main import Movieparse
 
 
 @pytest.fixture
-def output_path(tmp_path: Path) -> Path:
+def output_dir(tmp_path: Path) -> Path:
     """Creates output_dir.
 
     Args:
@@ -28,9 +28,9 @@ def output_path(tmp_path: Path) -> Path:
     Returns:
       output_dir as path
     """
-    output_path = tmp_path / "output_path"
-    output_path.mkdir()
-    return output_path
+    output_dir = tmp_path / "output_dir"
+    output_dir.mkdir()
+    return output_dir
 
 
 @pytest.fixture
@@ -113,14 +113,14 @@ def _filecount(dir: Path) -> int:
     return i
 
 
-def test_parse_movielist(output_path: Path) -> None:
+def test_parse_movielist(output_dir: Path) -> None:
     """Tests parsing from movielist.
 
     Tests with invalid input (empty list), expecting an error.
     Tests with valid input, expecting a full mapping and metadata as attribute and csv file.
 
     Args:
-      output_path: output_path fixture
+      output_dir: output_dir fixture
     Returns:
       None
     """
@@ -129,10 +129,10 @@ def test_parse_movielist(output_path: Path) -> None:
         x = Movieparse()
         x.parse_movielist([])
     assert str(exc_info.value) == "movielist can't be empty!"
-    assert _filecount(output_path) == 0
+    assert _filecount(output_dir) == 0
 
     # valid input
-    m = Movieparse(output_path=output_path, parsing_style=0)
+    m = Movieparse(output_dir=output_dir, parsing_style=0)
     mlist = ["1999 Fight Club"]
 
     m.parse_movielist(mlist)
@@ -171,11 +171,11 @@ def test_parse_movielist(output_path: Path) -> None:
     ]
 
     for file in flist:
-        assert (output_path / f"{file}.csv").exists()
+        assert (output_dir / f"{file}.csv").exists()
 
 
 def test_parse_root_movie_dir(
-    output_path: Path, root_movie_dir: Path, single_movie: Path
+    output_dir: Path, root_movie_dir: Path, single_movie: Path
 ) -> None:
     """Tests parsing from root_movie dir.
 
@@ -183,12 +183,12 @@ def test_parse_root_movie_dir(
     Testing with valid input, checking for correct mapping and correct metadata in object and csv files.
 
     Args:
-      output_path: output_path fixture
+      output_dir: output_dir fixture
       root_movie_dir: root_movie_dir fixture
       single_movie: single_movie fixture
     """
     # bad input (file not dir)
-    f = output_path / "otherfile"
+    f = output_dir / "otherfile"
     f.touch()
 
     with pytest.raises(Exception) as exc_info:
@@ -198,8 +198,8 @@ def test_parse_root_movie_dir(
     f.unlink()
 
     # valid input
-    assert _filecount(output_path) == 0
-    m = Movieparse(output_path=output_path, parsing_style=0)
+    assert _filecount(output_dir) == 0
+    m = Movieparse(output_dir=output_dir, parsing_style=0)
 
     assert m.cached_mapping.empty
     assert set(m.cached_mapping_ids) == set()
@@ -235,7 +235,7 @@ def test_parse_root_movie_dir(
     ]
 
     for file in flist:
-        assert (output_path / f"{file}.csv").exists()
+        assert (output_dir / f"{file}.csv").exists()
 
 
 def test_movieparse_public_interface() -> None:
