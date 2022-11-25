@@ -131,8 +131,6 @@ def test_initialization(output_dir: Path, monkeypatch: pytest.MonkeyPatch) -> No
     # caches are read correctly
     m = Movieparse(output_dir=output_dir)
     assert m.cached_mapping.empty is False
-    assert set(m.cached_mapping_ids) == {550}
-    assert set(m.cached_metadata_ids) == {550}
 
     # existing metadata is read correctly
     assert m.cast.empty is False
@@ -152,20 +150,15 @@ def test_initialization(output_dir: Path, monkeypatch: pytest.MonkeyPatch) -> No
 
     # supply api key
     m = Movieparse(tmdb_api_key="example-key")
-    # assert m._movieparse__TMDB_API_KEY == "example-key"
+    assert m._TMDB_API_KEY == "example-key"
 
 
-def test_guess_parsing_style() -> None:
+def test_guess_parsing_style(output_dir: Path) -> None:
     """Tests for correct estimation of parsing styles."""
-    # if styles overlap, the first matching style is chosen (zero in this case)
-    m = Movieparse()
+    # if styles has more matches, it gets chosen
+    m = Movieparse(output_dir=output_dir)
     m.parse_movielist(movielist=["1999 Fight Club", "1999 - Fight Club"])
-    # assert m._movieparse__PARSING_STYLE == 0
-
-    # parsing style with most matches is chosen
-    m = Movieparse()
-    m.parse_movielist(movielist=["1999 Fight Club", "Fight Club"])
-    # assert m._movieparse__PARSING_STYLE == 0
+    assert m._PARSING_STYLE == 0
 
     # no matches throws error
     m = Movieparse()
@@ -175,3 +168,32 @@ def test_guess_parsing_style() -> None:
         str(exc_info.value)
         == "couldn't estimate a parsing style, please supply one for yourself!"
     )
+
+    # conflicting matches throw error
+    m = Movieparse()
+    with pytest.raises(Exception) as exc_info:
+        m.parse_movielist(movielist=["1999 Fight Club", "Fight Club 1999"])
+    assert (
+        str(exc_info.value)
+        == "couldn't estimate a parsing style, please supply one for yourself!"
+    )
+
+
+def test_badinput(output_dir: Path) -> None:
+    """Tests for input that doesn't match extraction patterns."""
+    m = Movieparse(output_dir=output_dir, parsing_style=0)
+    m.parse_movielist(["Fight Club"])
+
+    assert set(m.mapping["tmdb_id"]) == {-2}
+    assert set(m.mapping["canonical_input"]) == {"Fight Club"}
+
+    assert m.metadata_lookup_ids == set()
+
+    assert m.cast.empty
+    # assert m.collect.empty
+    assert m.crew.empty
+    assert m.details.empty
+    assert m.genres.empty
+    assert m.prod_comp.empty
+    assert m.prod_count.empty
+    assert m.spoken_langs.empty

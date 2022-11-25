@@ -67,11 +67,6 @@ def main() -> None:
         default="en_US",
         help="ISO-639-1 language shortcode for specifying result language. Defaults to en_US.",
     )
-    parser.add_argument(
-        "--eager",
-        action="store_true",
-        help="Using this will refetch all IDs and metadata without accessing the cache.",
-    )
 
     args = parser.parse_args()
 
@@ -79,7 +74,6 @@ def main() -> None:
         output_dir=args.output_dir,
         tmdb_api_key=args.tmdb_api_key,
         parsing_style=args.parsing_style,
-        eager=args.eager,
         strict=args.lax,
         language=args.language,
     )
