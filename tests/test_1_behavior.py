@@ -197,3 +197,20 @@ def test_badinput(output_dir: Path) -> None:
     assert m.prod_comp.empty
     assert m.prod_count.empty
     assert m.spoken_langs.empty
+
+
+def test_badcustomids(output_dir: Path, root_movie_dir: Path) -> None:
+    """Users might enter tmdb_id_man that are not valid tmdb_ids for movies."""
+    mapping_stub = pd.DataFrame(
+        {
+            "input": "badcustomid",
+            "canonical_input": "badcustomid",
+            "tmdb_id": [603],
+            "tmdb_id_man": [1],
+        }
+    )
+    mapping_stub.to_csv((output_dir / "mapping.csv"), index=False)
+
+    m = Movieparse(output_dir=output_dir, parsing_style=0)
+    m.parse_root_movie_dir(root_movie_dir)
+    assert set(m.mapping["tmdb_id"]) == {603}
