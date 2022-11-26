@@ -71,7 +71,7 @@ class Movieparse:
         self._LANGUAGE = language
 
         if output_dir is None:
-            output_dir = Path(os.getcwd())
+            output_dir = Path.cwd()
         elif output_dir.is_dir() is False:
             raise Exception("please supply an OUTPUT_DIR that is a directory!")
         self._OUTPUT_DIR = output_dir
