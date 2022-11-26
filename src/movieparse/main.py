@@ -321,25 +321,19 @@ class Movieparse:
         for c, df in self._table_iter().items():
 
             tmp = pd.DataFrame()
+
             if c in ["cast", "crew"]:
-                tmp = pd.json_normalize(response["credits"], record_path=c).add_prefix(
-                    f"{c}."
-                )
+                tmp = pd.json_normalize(response["credits"].pop(c)).add_prefix(f"{c}.")
             elif c == "collection":
-                if response["belongs_to_collection"] is not None:
-                    tmp = pd.json_normalize(
-                        response["belongs_to_collection"]
-                    ).add_prefix(f"{c}.")
-                response.pop("belongs_to_collection")
+                collect = response.pop("belongs_to_collection")
+                if collect is not None:
+                    tmp = pd.json_normalize(collect).add_prefix(f"{c}.")
             elif c == "details":
-                response.pop("credits")
                 tmp = pd.json_normalize(response)
             else:
-                tmp = pd.json_normalize(response, record_path=c).add_prefix(f"{c}.")
-                response.pop(c)
+                tmp = pd.json_normalize(response.pop(c)).add_prefix(f"{c}.")
 
             tmp["tmdb_id"] = tmdb_id
-            tmp = self._assign_types(tmp)
 
             if tmp.empty is False:
                 first_column = tmp.pop("tmdb_id")
@@ -370,7 +364,8 @@ class Movieparse:
 
         responses = await asyncio.gather(*tasks)
         for response in tqdm(responses, desc="getting metadata"):
-            self._dissect_metadata_response(await response.json())
+            if response.status == 200:
+                self._dissect_metadata_response(await response.json())
         await session.close()
 
     def write(self) -> None:
@@ -445,9 +440,10 @@ class Movieparse:
         }
 
         for k, v in types.items():
-            try:
-                df[k] = df[k].astype(v)
-            except KeyError:
-                pass
+            if k in df.columns:
+                try:
+                    df[k] = df[k].astype(v)
+                except KeyError:
+                    pass
 
         return df
