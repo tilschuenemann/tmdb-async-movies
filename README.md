@@ -23,7 +23,15 @@
 
 ## Features
 
-`movieparse` is a lazy utility for fetching bulk movie data from [TMDB](https://www.themoviedb.org/) using movie release year and title. It has both an Python API and CLI.
+`movieparse` is an asynchronous utility for fetching bulk movie data from [TMDB](https://www.themoviedb.org/) using movie title and optionally release year. It has both a Python API and a CLI.
+
+Distinction from other packages, `movieparse`:
+
+- focuses on fetching movies only.
+- can write metadata as CSV files, but is also keeps them within the movieparse object.
+- makes all API requests asynchronously and is therefore very fast.
+- casts all metadata dtypes so you don't have to.
+- can uses multiple sources of input and is easily extendable, as long as the input features movie title and release year.
 
 ## Requirements
 
