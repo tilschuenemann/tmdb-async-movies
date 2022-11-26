@@ -92,7 +92,7 @@ class Movieparse:
 
         self._read_existing()
 
-    def _table_iter(self) -> dict[str, pd.DataFrame]:
+    def _metadata(self) -> dict[str, pd.DataFrame]:
         """Provides a dictionary for compactly allocating metadata.
 
         Returns:
@@ -112,7 +112,7 @@ class Movieparse:
     def _read_existing(self) -> None:
         """Uses _table_iter() to read existing metadata and append to internal dataframes."""
         df_list = []
-        for fname, df in self._table_iter().items():
+        for fname, df in self._metadata().items():
             tmp_path = self._OUTPUT_DIR / f"{fname}.csv"
             if tmp_path.exists():
                 df = pd.read_csv(tmp_path)
@@ -318,7 +318,7 @@ class Movieparse:
     def _dissect_metadata_response(self, response: Dict[str, object]) -> None:
         results = []
         tmdb_id = response.pop("id")
-        for c, df in self._table_iter().items():
+        for c, df in self._metadata().items():
 
             tmp = pd.DataFrame()
 
