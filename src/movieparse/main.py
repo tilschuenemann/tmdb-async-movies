@@ -219,10 +219,8 @@ class Movieparse:
                 "couldn't estimate a parsing style, please supply one for yourself!"
             )
 
-        max_items = len(tmp.index) * 2
-        print(
-            f"estimated best parsing style: {self._PARSING_STYLE} with {max_matches} / {max_items} matches"
-        )
+        accuracy = f"{(max_matches / (len(tmp.index) * 2) * 100):.2f}"
+        print(f"best parsing style: {self._PARSING_STYLE} with {accuracy}% accuracy")
 
     def _update_mapping(self) -> None:
         """Concatenates cached mapping and newly generated mapping, keeping the cached mappings entries if duplicates occur.
@@ -386,7 +384,9 @@ class Movieparse:
         for fname, df in self._metadata().items():
             tmp_path = self._OUTPUT_DIR / f"{fname}.csv"
             if df.empty is False:
-                df.to_csv(tmp_path, date_format="%Y-%m-%d", index=False)
+                df.to_csv(
+                    tmp_path, date_format="%Y-%m-%d", index=False, float_format="%.3f"
+                )
 
     def _assign_types(self, df: pd.DataFrame) -> pd.DataFrame:
         types = {
