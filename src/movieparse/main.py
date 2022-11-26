@@ -235,7 +235,6 @@ class Movieparse:
         ).drop_duplicates(subset="canonical_input", keep="first")
 
     def _get_ids(self) -> None:
-
         asyncio.run(self._get_ids_async(exact=True))
 
         if not self._STRICT:
@@ -288,8 +287,15 @@ class Movieparse:
             ]
 
         results = []
-        responses = await asyncio.gather(*tasks)
-        for response in tqdm(responses, desc=f"getting ids, exact: {exact}"):
+        responses = [
+            await f
+            for f in tqdm(
+                asyncio.as_completed(tasks),
+                desc="{:<35}".format(f"getting ids from TMDB, exact: {exact}"),
+                total=len(tasks),
+            )
+        ]
+        for response in responses:
             try:
                 resp = await response.json()
                 results.append(resp["results"][0]["id"])
@@ -323,7 +329,7 @@ class Movieparse:
             tmp = pd.DataFrame()
 
             if c in ["cast", "crew"]:
-                tmp = pd.json_normalize(response["credits"].pop(c)).add_prefix(f"{c}.")
+                tmp = pd.json_normalize(response["credits"].pop(c)).add_prefix(f"{c}.")  # type: ignore [attr-defined]
             elif c == "collection":
                 collect = response.pop("belongs_to_collection")
                 if collect is not None:
@@ -362,8 +368,15 @@ class Movieparse:
             for tmdb_id in self.metadata_lookup_ids
         ]
 
-        responses = await asyncio.gather(*tasks)
-        for response in tqdm(responses, desc="getting metadata"):
+        responses = [
+            await f
+            for f in tqdm(
+                asyncio.as_completed(tasks),
+                desc="{:<35}".format("getting metadata from TMDB"),
+                total=len(tasks),
+            )
+        ]
+        for response in tqdm(responses, desc="{:<35}".format("organizing responses")):
             if response.status == 200:
                 self._dissect_metadata_response(await response.json())
         await session.close()
