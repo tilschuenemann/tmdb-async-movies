@@ -1,9 +1,6 @@
-"""A one line summary of the module or program, terminated by a period.
+"""yaya.
 
-Leave one blank line.  The rest of this docstring should contain an
-overall description of the module or program.  Optionally, it may also
-contain a brief description of exported classes and functions and/or usage
-examples.
+yaya.
 
 Typical usage example:
 
@@ -11,15 +8,16 @@ foo = ClassFoo()
 bar = foo.FunctionBar()
 """
 
+import asyncio
 import os
 import re
 from pathlib import Path
 from typing import Dict
 from typing import List
-from typing import Set
 
+import aiohttp
+import numpy as np
 import pandas as pd
-import requests
 from tqdm import tqdm
 
 
@@ -30,7 +28,6 @@ class Movieparse:
       output_dir: path where metadata gets written to
       tmdb_api_key: api key for TMDB
       parsing_style: int
-      eager: bool whether
       strict: bool whether
       language: ISO shortcode
     """
@@ -39,15 +36,14 @@ class Movieparse:
     cast = (
         collect
     ) = crew = details = genres = prod_comp = prod_count = spoken_langs = pd.DataFrame()
-    cached_mapping_ids: Set[int] = set()
-    cached_metadata_ids: Set[int] = set()
     cached_mapping = pd.DataFrame()
 
-    # default codes
-    __DEFAULT = 0
-    __NO_RESULT = -1
-    __NO_EXTRACT = -2
-    __BAD_RESPONSE = -3
+    default_codes = {
+        "DEFAULT": 0,
+        "NO_RESULT": -1,
+        "NO_EXTRACT": -2,
+        "BAD_RESPONSE": -3,
+    }
 
     @staticmethod
     def get_parsing_patterns() -> dict[int, re.Pattern[str]]:
@@ -59,6 +55,7 @@ class Movieparse:
         return {
             0: re.compile(r"^(?P<disk_year>\d{4})\s{1}(?P<disk_title>.+)$"),
             1: re.compile(r"^(?P<disk_year>\d{4})\s-\s(?P<disk_title>.+)$"),
+            2: re.compile(r"^(?P<disk_title>.+)\s(?P<disk_year>\d{4})$"),
         }
 
     def __init__(
@@ -66,25 +63,23 @@ class Movieparse:
         output_dir: Path | None = None,
         tmdb_api_key: str | None = None,
         parsing_style: int = -1,
-        eager: bool = False,
         strict: bool = False,
         language: str = "en_US",
     ):
         """Initilizes movieparser."""
-        self.__EAGER = eager
-        self.__STRICT = strict
-        self.__LANGUAGE = language
+        self._STRICT = strict
+        self._LANGUAGE = language
 
         if output_dir is None:
             output_dir = Path(os.getcwd())
         elif output_dir.is_dir() is False:
             raise Exception("please supply an OUTPUT_DIR that is a directory!")
-        self.__OUTPUT_DIR = output_dir
+        self._OUTPUT_DIR = output_dir
 
         if tmdb_api_key is None and os.getenv("TMDB_API_KEY") is not None:
-            self.__TMDB_API_KEY = os.getenv("TMDB_API_KEY")
+            self._TMDB_API_KEY = os.getenv("TMDB_API_KEY")
         elif tmdb_api_key is not None:
-            self.__TMDB_API_KEY = tmdb_api_key
+            self._TMDB_API_KEY = tmdb_api_key
         else:
             raise Exception("please supply a TMDB_API_KEY!")
 
@@ -93,13 +88,16 @@ class Movieparse:
         ):
             raise Exception("please supply a valid PARSING_STYLE!")
         else:
-            self.__PARSING_STYLE = parsing_style
+            self._PARSING_STYLE = parsing_style
 
-        # setup internals
-        self._setup_caches()
         self._read_existing()
 
     def _table_iter(self) -> dict[str, pd.DataFrame]:
+        """Provides an iterable dictionary for allocating metadata.
+
+        Returns:
+          Dictionary with filenames as keys and respective internal dataframes.
+        """
         return {
             "cast": self.cast,
             "collection": self.collect,
@@ -111,21 +109,14 @@ class Movieparse:
             "details": self.details,
         }
 
-    def _setup_caches(self) -> None:
-        tmp_path = self.__OUTPUT_DIR / "mapping.csv"
-        if tmp_path.exists():
-            self.cached_mapping = pd.read_csv(tmp_path)
-            self.cached_mapping_ids = set(self.cached_mapping["tmdb_id"])
-
     def _read_existing(self) -> None:
-        """Reads metadata CSVs if existing and appends tmdb_ids to cached_metadata_ids."""
+        """Uses _table_iter() to read existing metadata and append to internal dataframes."""
         df_list = []
         for fname, df in self._table_iter().items():
-            tmp_path = self.__OUTPUT_DIR / f"{fname}.csv"
+            tmp_path = self._OUTPUT_DIR / f"{fname}.csv"
             if tmp_path.exists():
                 df = pd.read_csv(tmp_path)
                 df = self._assign_types(df)
-                self.cached_metadata_ids |= set(df["tmdb_id"])
             else:
                 df = pd.DataFrame()
             df_list.append(df)
@@ -141,6 +132,11 @@ class Movieparse:
             self.details,
         ) = df_list
 
+        tmp_path = self._OUTPUT_DIR / "mapping.csv"
+        if tmp_path.exists():
+            self.cached_mapping = pd.read_csv(tmp_path)
+            self.cached_mapping = self._assign_types(self.cached_mapping)
+
     def parse_movielist(self, movielist: List[str]) -> None:
         """Parse movie metadata from movielist.
 
@@ -152,8 +148,8 @@ class Movieparse:
 
         self.mapping = pd.DataFrame(
             {
-                "tmdb_id": self.__DEFAULT,
-                "tmdb_id_man": self.__DEFAULT,
+                "tmdb_id": self.default_codes["NO_EXTRACT"],
+                "tmdb_id_man": self.default_codes["DEFAULT"],
                 "input": movielist,
                 "canonical_input": movielist,
             }
@@ -177,8 +173,8 @@ class Movieparse:
 
         self.mapping = pd.DataFrame(
             {
-                "tmdb_id": self.__DEFAULT,
-                "tmdb_id_man": self.__DEFAULT,
+                "tmdb_id": self.default_codes["NO_EXTRACT"],
+                "tmdb_id_man": self.default_codes["DEFAULT"],
                 "input": names,
                 "canonical_input": [x.name for x in names],
             }
@@ -187,21 +183,23 @@ class Movieparse:
         self._generic_parse()
 
     def _generic_parse(self) -> None:
-        if self.__PARSING_STYLE == -1:
+        if self._PARSING_STYLE == -1:
             self._guess_parsing_style()
 
         self._update_mapping()
         self._get_ids()
         self._update_metadata_lookup_ids()
-        self._get_metadata()
+        asyncio.run(self._get_metadata())
 
     def _guess_parsing_style(self) -> None:
         """Iterates over supplied names with all parsing styles, determining the most matches.
 
-        Incase two patterns have the same matches, the first one is used.
+        Raises:
+          Expection if two or more styles have the same amount of matches or if no styles match.
         """
         tmp = self.mapping[["canonical_input"]].copy()
         max_matches = 0
+        conflict = False
         for style, pattern in Movieparse.get_parsing_patterns().items():
             matches = (
                 tmp["canonical_input"]
@@ -211,98 +209,119 @@ class Movieparse:
                 .sum()
             )
             if matches > max_matches:
-                self.__PARSING_STYLE = style
+                self._PARSING_STYLE = style
                 max_matches = matches
+                conflict = False
+            elif matches == max_matches:
+                conflict = True
 
-        if max_matches == 0 and self.__PARSING_STYLE == -1:
+        if max_matches == 0 and self._PARSING_STYLE == -1 or conflict:
             raise Exception(
                 "couldn't estimate a parsing style, please supply one for yourself!"
             )
 
         max_items = len(tmp.index) * 2
         print(
-            f"estimated best parsing style: {self.__PARSING_STYLE} with {max_matches} / {max_items} matches"
+            f"estimated best parsing style: {self._PARSING_STYLE} with {max_matches} / {max_items} matches"
         )
 
     def _update_mapping(self) -> None:
+        """Concatenates cached mapping and newly generated mapping, keeping the cached mappings entries if duplicates occur.
+
+        For dupes only the column canonical_input is considered. If the user previously entered values in tmdb_id_man,
+        these will be kept.
+        """
         self.mapping = pd.concat(
             [self.cached_mapping, self.mapping], axis=0, ignore_index=True
         ).drop_duplicates(subset="canonical_input", keep="first")
 
-    def _get_id(self, title: str, year: int = -1) -> int:
-        """Creates API request with title and year; if that fails, creates another with just the title (if STRICT=False)."""
-        if year != self.__NO_RESULT:
-            response = requests.get(
-                f"https://api.themoviedb.org/3/search/movie/?api_key={self.__TMDB_API_KEY}&query={title}&year={year}&include_adult=true"
-            ).json()
-            try:
-                return int(response["results"][0]["id"])
-            except IndexError:
-                if self.__STRICT is True:
-                    return self.__NO_RESULT
-            except KeyError:
-                return self.__BAD_RESPONSE
-
-        response = requests.get(
-            f"https://api.themoviedb.org/3/search/movie/?api_key={self.__TMDB_API_KEY}&query={title}&include_adult=true"
-        ).json()
-        try:
-            return int(response["results"][0]["id"])
-        except IndexError:
-            return self.__NO_RESULT
-        except KeyError:
-            return self.__BAD_RESPONSE
-
     def _get_ids(self) -> None:
-        def helper(canon_name: str, tmdb_id: int) -> int:
-            if tmdb_id != self.__DEFAULT and not self.__EAGER:
-                return tmdb_id
 
-            regex = Movieparse.get_parsing_patterns()[self.__PARSING_STYLE]
-            extract = re.match(regex, canon_name)
-            if extract is not None:
-                year = int(extract.group("disk_year"))
-                title = extract.group("disk_title")
-                tmdb_id = self._get_id(title, year)
-            else:
-                tmdb_id = self.__NO_EXTRACT
-            return tmdb_id
+        asyncio.run(self._get_ids_async(exact=True))
 
-        self.mapping["tmdb_id"] = [
-            helper(x, y)
-            for x, y in tqdm(
-                zip(self.mapping["canonical_input"], self.mapping["tmdb_id"]),
-                total=len(self.mapping.index),
-                desc="getting tmdb_ids",
-            )
-        ]
+        if not self._STRICT:
+            asyncio.run(self._get_ids_async(exact=False))
 
+        self.mapping = self._assign_types(self.mapping)
         self.mapping.to_csv(
-            (self.__OUTPUT_DIR / "mapping.csv"), date_format="%Y-%m-%d", index=False
+            (self._OUTPUT_DIR / "mapping.csv"), date_format="%Y-%m-%d", index=False
+        )
+
+    async def _get_ids_async(self, exact: bool) -> None:
+        """Asynchronously lookup tmdb_ids from canonical_input.
+
+        Args:
+          exact:
+
+        Returns:
+          dataframe with a potentially incomplete index and column tmdb_id
+
+        Uses _PARSING_STYLE to extract title and year from canonical input. If input doesn't match it's dropped from canon_ext.
+        This missing index is used later for stitching the results together.
+        Depending on the exact param a list of tasks is created and then run asynchronously.
+        """
+        pattern = Movieparse.get_parsing_patterns()[self._PARSING_STYLE]
+        needed_lookups = self.mapping[
+            self.mapping["tmdb_id"].isin([v for v in self.default_codes.values()])
+        ].copy()
+        canon_ext = (
+            needed_lookups["canonical_input"]
+            .str.extract(pattern, expand=True)
+            .dropna(how="any", axis=0)
+        )
+
+        session = aiohttp.ClientSession()
+        if exact:
+            tasks = [
+                session.get(
+                    f"https://api.themoviedb.org/3/search/movie/?api_key={self._TMDB_API_KEY}&query={x}&year={y}&include_adult=true",
+                    ssl=False,
+                )
+                for x, y in zip(canon_ext["disk_title"], canon_ext["disk_year"])
+            ]
+        else:
+            tasks = [
+                session.get(
+                    f"https://api.themoviedb.org/3/search/movie/?api_key={self._TMDB_API_KEY}&query={x}&include_adult=true",
+                    ssl=False,
+                )
+                for x in canon_ext["disk_title"]
+            ]
+
+        results = []
+        responses = await asyncio.gather(*tasks)
+        for response in tqdm(responses, desc=f"getting ids, exact: {exact}"):
+            try:
+                resp = await response.json()
+                results.append(resp["results"][0]["id"])
+            except IndexError:
+                results.append(self.default_codes["NO_RESULT"])
+            except KeyError:
+                results.append(self.default_codes["BAD_RESPONSE"])
+        await session.close()
+
+        tmp = pd.DataFrame({"tmdb_id": results}, index=canon_ext.index).reindex(
+            self.mapping.index
+        )
+
+        self.mapping["tmdb_id"] = np.where(
+            pd.notnull(tmp["tmdb_id"]), tmp["tmdb_id"], self.mapping["tmdb_id"]
         )
 
     def _update_metadata_lookup_ids(self) -> None:
+        """Creates a set of ids for looking up metadata and removes movieparse default_codes as they are placeholders."""
         self.metadata_lookup_ids = set(self.mapping["tmdb_id"]) | set(
             self.mapping["tmdb_id_man"]
         )
 
-        if self.__EAGER is True:
-            self.metadata_lookup_ids -= set(self.cached_metadata_ids)
+        self.metadata_lookup_ids -= {x for x in self.default_codes.values()}
 
-        self.metadata_lookup_ids -= {
-            self.__DEFAULT,
-            self.__NO_RESULT,
-            self.__NO_EXTRACT,
-            self.__BAD_RESPONSE,
-        }
-
-    def _dissect_metadata_response(
-        self, response: Dict[str, object], tmdb_id: int
-    ) -> None:
+    def _dissect_metadata_response(self, response: Dict[str, object]) -> None:
         results = []
+        tmdb_id = response.pop("id")
         for c, df in self._table_iter().items():
-            tmp = pd.DataFrame()
 
+            tmp = pd.DataFrame()
             if c in ["cast", "crew"]:
                 tmp = pd.json_normalize(response["credits"], record_path=c).add_prefix(
                     f"{c}."
@@ -315,7 +334,6 @@ class Movieparse:
                 response.pop("belongs_to_collection")
             elif c == "details":
                 response.pop("credits")
-                response.pop("id")
                 tmp = pd.json_normalize(response)
             else:
                 tmp = pd.json_normalize(response, record_path=c).add_prefix(f"{c}.")
@@ -341,21 +359,25 @@ class Movieparse:
             self.details,
         ) = results
 
-    def _get_metadata(self) -> None:
-        for tmdb_id in tqdm(self.metadata_lookup_ids, desc="getting metadata"):
-            url = "".join(
-                [
-                    f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.__TMDB_API_KEY}",
-                    f"&language={self.__LANGUAGE}&append_to_response=credits",
-                ]
+    async def _get_metadata(self) -> None:
+        session = aiohttp.ClientSession()
+        tasks = [
+            session.get(
+                f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self._TMDB_API_KEY}&language={self._LANGUAGE}&append_to_response=credits",
+                ssl=False,
             )
-            response = requests.get(url).json()
-            self._dissect_metadata_response(response, tmdb_id)
+            for tmdb_id in self.metadata_lookup_ids
+        ]
+
+        responses = await asyncio.gather(*tasks)
+        for response in tqdm(responses, desc="getting metadata"):
+            self._dissect_metadata_response(await response.json())
+        await session.close()
 
     def write(self) -> None:
         """Writes all non-empty metadata dataframes as CSV files to output_dir."""
         for fname, df in self._table_iter().items():
-            tmp_path = self.__OUTPUT_DIR / f"{fname}.csv"
+            tmp_path = self._OUTPUT_DIR / f"{fname}.csv"
             if df.empty is False:
                 df.to_csv(tmp_path, date_format="%Y-%m-%d", index=False)
 
@@ -363,6 +385,7 @@ class Movieparse:
         types = {
             "tmdb_id": "int32",
             "tmdb_id_man": "int32",
+            "canonical_input": str,
             "cast.adult": bool,
             "cast.gender": "int8",
             "cast.id": int,

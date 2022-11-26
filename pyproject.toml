@@ -20,8 +20,9 @@ python = "^3.10.7"
 click = ">=8.0.1"
 pandas = "^1.5.1"
 tqdm = "^4.64.1"
-requests = "^2.28.1"
 pathlib = "^1.0.1"
+numpy = "^1.23.5"
+aiohttp = "^3.8.3"
 
 [tool.poetry.dev-dependencies]
 Pygments = ">=2.10.0"
@@ -51,7 +52,7 @@ myst-parser = {version = ">=0.16.1"}
 types-requests = "^2.28.11.5"
 
 [tool.poetry.scripts]
-movieparse = "movieparse.__main__:main"
+movieparse = "movieparse.cli:main"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]

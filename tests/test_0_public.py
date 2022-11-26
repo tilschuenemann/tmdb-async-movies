@@ -155,8 +155,6 @@ def test_parse_movielist(output_dir: Path) -> None:
     assert m.spoken_langs.empty is False
 
     assert m.cached_mapping.empty
-    assert set(m.cached_mapping_ids) == set()
-    assert set(m.cached_metadata_ids) == set()
 
     flist = [
         "cast",
@@ -202,8 +200,6 @@ def test_parse_root_movie_dir(
     m = Movieparse(output_dir=output_dir, parsing_style=0)
 
     assert m.cached_mapping.empty
-    assert set(m.cached_mapping_ids) == set()
-    assert set(m.cached_metadata_ids) == set()
 
     m.parse_root_movie_dir(root_movie_dir)
     m.write()
@@ -242,7 +238,6 @@ def test_movieparse_public_interface() -> None:
     """Checks for public available interfaces."""
     m = Movieparse()
 
-    caches = ["cached_mapping", "cached_mapping_ids", "cached_metadata_ids"]
     methods = [
         "get_parsing_patterns",
         "parse_movielist",
@@ -260,6 +255,6 @@ def test_movieparse_public_interface() -> None:
         "spoken_langs",
     ]
 
-    assert {"mapping", *caches, *methods, *metadata} == {
+    assert {"mapping", "cached_mapping", "default_codes", *methods, *metadata} == {
         x for x in dir(m) if not x.startswith("_")
     }
