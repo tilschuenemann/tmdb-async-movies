@@ -383,7 +383,7 @@ class Movieparse:
 
     def write(self) -> None:
         """Writes all non-empty metadata dataframes as CSV files to output_dir."""
-        for fname, df in self._table_iter().items():
+        for fname, df in self._metadata().items():
             tmp_path = self._OUTPUT_DIR / f"{fname}.csv"
             if df.empty is False:
                 df.to_csv(tmp_path, date_format="%Y-%m-%d", index=False)
