@@ -148,8 +148,6 @@ class Movieparse:
 
         self.mapping = pd.DataFrame(
             {
-                "tmdb_id": self.default_codes["NO_EXTRACT"],
-                "tmdb_id_man": self.default_codes["DEFAULT"],
                 "input": movielist,
                 "canonical_input": movielist,
             }
@@ -173,8 +171,6 @@ class Movieparse:
 
         self.mapping = pd.DataFrame(
             {
-                "tmdb_id": self.default_codes["NO_EXTRACT"],
-                "tmdb_id_man": self.default_codes["DEFAULT"],
                 "input": names,
                 "canonical_input": [x.name for x in names],
             }
@@ -183,6 +179,9 @@ class Movieparse:
         self._generic_parse()
 
     def _generic_parse(self) -> None:
+        self.mapping["tmdb_id"] = self.default_codes["NO_EXTRACT"]
+        self.mapping["tmdb_id_man"] = self.default_codes["DEFAULT"]
+
         if self._PARSING_STYLE == -1:
             self._guess_parsing_style()
 
