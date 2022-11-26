@@ -47,10 +47,10 @@ class Movieparse:
 
     @staticmethod
     def get_parsing_patterns() -> dict[int, re.Pattern[str]]:
-        """Lists all valid patterns for extracting title and release year from input.
+        """Lists all valid patterns for extracting title and (optionally release year) from input.
 
         Returns:
-          A dict mapping integer keys to their regex pattern
+          A dict mapping integer keys to their regex pattern.
         """
         return {
             0: re.compile(r"^(?P<disk_year>\d{4})\s{1}(?P<disk_title>.+)$"),
@@ -93,10 +93,10 @@ class Movieparse:
         self._read_existing()
 
     def _table_iter(self) -> dict[str, pd.DataFrame]:
-        """Provides an iterable dictionary for allocating metadata.
+        """Provides a dictionary for compactly allocating metadata.
 
         Returns:
-          Dictionary with filenames as keys and respective internal dataframes.
+          Dictionary with filenames as keys and internal dataframes as values.
         """
         return {
             "cast": self.cast,
@@ -191,7 +191,7 @@ class Movieparse:
         asyncio.run(self._get_metadata())
 
     def _guess_parsing_style(self) -> None:
-        """Iterates over supplied names with all parsing styles, determining the most matches.
+        """Iterates over canonical input, matching the _PARSING_STYLE  according to most matches.
 
         Raises:
           Expection if two or more styles have the same amount of matches or if no styles match.
@@ -250,14 +250,14 @@ class Movieparse:
         """Asynchronously lookup tmdb_ids from canonical_input.
 
         Args:
-          exact:
+          exact: whether to create tasks using title and year only.
 
         Returns:
-          dataframe with a potentially incomplete index and column tmdb_id
+          dataframe with a potentially incomplete index and column tmdb_id.
 
         Uses _PARSING_STYLE to extract title and year from canonical input. If input doesn't match it's dropped from canon_ext.
         This missing index is used later for stitching the results together.
-        Depending on the exact param a list of tasks is created and then run asynchronously.
+        Depending on the exact-argument a list of tasks is created and then run asynchronously.
         """
         pattern = Movieparse.get_parsing_patterns()[self._PARSING_STYLE]
         needed_lookups = self.mapping[
@@ -308,7 +308,7 @@ class Movieparse:
         )
 
     def _update_metadata_lookup_ids(self) -> None:
-        """Creates a set of ids for looking up metadata and removes movieparse default_codes as they are placeholders."""
+        """Creates a set of ids for looking up metadata and removes movieparse default_codes."""
         self.metadata_lookup_ids = set(self.mapping["tmdb_id"]) | set(
             self.mapping["tmdb_id_man"]
         )
@@ -379,6 +379,7 @@ class Movieparse:
         types = {
             "tmdb_id": "int32",
             "tmdb_id_man": "int32",
+            # input is left out as it can be both a string and a path!
             "canonical_input": str,
             "cast.adult": bool,
             "cast.gender": "int8",
