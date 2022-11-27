@@ -7,6 +7,10 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx_click",
     "myst_parser",
+    "sphinx_rtd_theme",
+    "sphinx.ext.viewcode",
 ]
-autodoc_typehints = "description"
-html_theme = "furo"
+autodoc_typehints = "signature"
+html_theme = "sphinx_rtd_theme"
+
+html_theme_options = {"navigation_depth": 2, "collapse_navigation": True}

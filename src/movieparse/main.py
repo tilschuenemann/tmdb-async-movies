@@ -22,14 +22,14 @@ from tqdm import tqdm
 
 
 class Movieparse:
-    """Desc.
+    """Movieparse object used for storing configuration and metadata.
 
     Attributes:
-      output_dir: path where metadata gets written to
-      tmdb_api_key: api key for TMDB
-      parsing_style: int
-      strict: bool whether
-      language: ISO shortcode
+      output_dir: Output directory where files get written to.
+      tmdb_api_key: TMDB API Key. Falls back to environment variable TMDB_API_KEY.
+      parsing_style: Define parsing style to use. -1 for estimating parsing style.
+      strict: Always use title and release year for looking up metadata, no fallback to title only.
+      language: ISO-639-1 shortcode for getting locale information.
     """
 
     mapping = pd.DataFrame()
@@ -389,11 +389,22 @@ class Movieparse:
                 )
 
     def _assign_types(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Casts df columns to specified types.
+
+        tmdb_id is shared among all metadata files but only listed for mapping.csv.
+
+        Args:
+          df: dataframe to be casted
+        Returns:
+          df with casted columns.
+        """
         types = {
+            # mapping .csv
             "tmdb_id": "int32",
             "tmdb_id_man": "int32",
-            # input is left out as it can be both a string and a path!
+            "input": object,  # can be both a string and a path!
             "canonical_input": str,
+            # cast.csv
             "cast.adult": bool,
             "cast.gender": "int8",
             "cast.id": int,
@@ -406,10 +417,12 @@ class Movieparse:
             "cast.character": str,
             "cast.credit_id": str,
             "cast.order": "int8",
+            # collections.csv
             "collection.id": int,
             "collection.name": str,
             "collection.poster_path": str,
             "collection.backdrop_path": str,
+            # crew.csv
             "crew.adult": bool,
             "crew.gender": "int8",
             "crew.id": int,
@@ -421,17 +434,21 @@ class Movieparse:
             "crew.credit_id": str,
             "crew.department": "category",
             "crew.job": str,
+            # genres.csv
             "genres.id": "int8",
             "genres.name": str,
+            # production_companies.csv
             "production_companies.id": "int32",
             "production_companies.logo_path": str,
             "production_companies.name": "category",
             "production_companies.origin_country": "category",
             "production_countries.iso_3166_1": "category",
             "production_countries.name": str,
+            # spoken_languages.csv
             "spoken_languages.english_name": "category",
             "spoken_languages.iso_3166_1": "category",
             "spoken_languages.name": str,
+            # details.csv
             "adult": bool,
             "backdrop_path": str,
             "budget": int,
@@ -455,9 +472,5 @@ class Movieparse:
 
         for k, v in types.items():
             if k in df.columns:
-                try:
-                    df[k] = df[k].astype(v)
-                except KeyError:
-                    pass
-
+                df[k] = df[k].astype(v)
         return df

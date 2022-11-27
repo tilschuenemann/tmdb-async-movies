@@ -3,6 +3,6 @@
 ## movieparse
 
 ```{eval-rst}
-.. automodule:: movieparse
-   :members:
+.. autoclass:: movieparse.main::Movieparse
+  :members:
 ```
