@@ -78,7 +78,12 @@ def cli(
 )
 @click.pass_context
 def from_dir(ctx: Context, root_movie_dir: Path) -> None:
-    """Lookup movies from given root_movie_dir."""
+    """Lookup movies from given root_movie_dir.
+
+    Args:
+      ctx: context passed from cli options.
+      root_movie_dir: directory where movie subfolders lie.
+    """
     tmdb_api_key = ctx.obj["tmdb_api_key"]
     output_dir = ctx.obj["output_dir"]
     lax = ctx.obj["lax"]
@@ -100,7 +105,12 @@ def from_dir(ctx: Context, root_movie_dir: Path) -> None:
 @click.argument("movielist", nargs=-1, required=True)
 @click.pass_context
 def from_list(ctx: Context, movielist: List[str]) -> None:
-    """Lookup movies from given movielist."""
+    """Lookup movies from given movielist.
+
+    Args:
+      ctx: context passed from cli options.
+      movielist: List of titles (and optionally release years).
+    """
     tmdb_api_key = ctx.obj["tmdb_api_key"]
     output_dir = ctx.obj["output_dir"]
     lax = ctx.obj["lax"]

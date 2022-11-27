@@ -1,7 +1,7 @@
 # Usage
 
 ```{eval-rst}
-.. click:: movieparse.__main__:main
+.. click:: movieparse.cli:cli
     :prog: movieparse
     :nested: full
 ```

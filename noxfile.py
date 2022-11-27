@@ -231,7 +231,6 @@ def docs(session: Session) -> None:
         "sphinx",
         "sphinx-autobuild",
         "sphinx-click",
-        "furo",
         "myst-parser",
         "sphinx_rtd_theme",
     )
