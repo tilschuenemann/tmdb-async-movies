@@ -1,89 +1,121 @@
-"""A one line summary of the module or program, terminated by a period.
+"""Module to use Movieparse with CLI."""
 
-Leave one blank line.  The rest of this docstring should contain an
-overall description of the module or program.  Optionally, it may also
-contain a brief description of exported classes and functions and/or usage
-examples.
+from pathlib import Path
+from typing import List
 
-Typical usage example:
-
-foo = ClassFoo()
-bar = foo.FunctionBar()
-"""
-
-import argparse
-import pathlib
+import click
+from click import Context
 
 from movieparse.main import Movieparse
 
 
-def main() -> None:
-    """Entrypoint for CLI."""
-    parser = argparse.ArgumentParser(prog="tmdb_parser")
+@click.group()
+@click.option(
+    "-t",
+    "--tmdb-api-key",
+    type=str,
+    help="TMDB API Key. Falls back to environment variable TMDB_API_KEY.",
+)
+@click.option(
+    "-o",
+    "--output_dir",
+    type=click.Path(
+        path_type=Path,
+        exists=True,
+        file_okay=False,
+        dir_okay=True,
+        writable=True,
+        readable=True,
+    ),
+    help="Output directory where files get written to.",
+)
+@click.option(
+    "-lx",
+    "--lax",
+    is_flag=True,
+    default=False,
+    show_default=True,
+    help=" Always use title and release year for looking up metadata, no fallback to title only.",
+)
+@click.option(
+    "-p",
+    "--parsing_style",
+    type=click.IntRange(-1, 1),
+    default=-1,
+    show_default=True,
+    help="Define parsing style to use. -1 for estimating parsing style.",
+)
+@click.option(
+    "-l",
+    "--language",
+    type=str,
+    help="ISO-639-1 shortcode for getting locale information.",
+)
+@click.pass_context
+def cli(
+    ctx: Context,
+    tmdb_api_key: str | None,
+    output_dir: Path | None,
+    lax: bool,
+    parsing_style: int,
+    language: str,
+) -> None:
+    """Take general arguments and pass them as context object."""
+    ctx.ensure_object(dict)
+    ctx.obj["tmdb_api_key"] = tmdb_api_key
+    ctx.obj["output_dir"] = output_dir
+    ctx.obj["lax"] = lax
+    ctx.obj["parsing_style"] = parsing_style
+    ctx.obj["language"] = language
 
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument(
-        "--root_movie_dir",
-        nargs="?",
-        type=pathlib.Path,
-        help="Directory containing your movie folders.",
-    )
-    group.add_argument(
-        "--movie_list",
-        nargs="+",
-        type=str,
-        help="Alternative to root_movie_dir, takes list of strings with movie title and optionally movie release year.",
-    )
-    parser.add_argument(
-        "--tmdb_api_key",
-        nargs="?",
-        type=str,
-        help="TMDB API key. If not supplied here, environment variable TMDB_API_KEY will be read.",
-    )
-    parser.add_argument(
-        "--parsing_style",
-        nargs="?",
-        type=int,
-        choices=[0, max(Movieparse.get_parsing_patterns().keys())],
-        default=-1,
-        help="Naming convention used - see documentation for examples.",
-    )
-    parser.add_argument(
-        "--output_dir",
-        nargs="?",
-        type=pathlib.Path,
-        help="Directory where output CSVs get written to. Defaults to current directory.",
-    )
-    parser.add_argument(
-        "--lax",
-        action="store_false",
-        help="Use if TMDB ID lookup should fall back to title only (instead of year+title). Results may not be as accurate.",
-    )
-    parser.add_argument(
-        "--language",
-        nargs="?",
-        type=str,
-        const="en_US",
-        default="en_US",
-        help="ISO-639-1 language shortcode for specifying result language. Defaults to en_US.",
-    )
 
-    args = parser.parse_args()
+@cli.command("dir", help="Use ROOT_MOVIE_DIRs subfolder names to lookup metadata.")
+@click.argument(
+    "root_movie_dir",
+    required=True,
+    nargs=1,
+    type=click.Path(path_type=Path, exists=True, file_okay=False, dir_okay=True),
+)
+@click.pass_context
+def from_dir(ctx: Context, root_movie_dir: Path) -> None:
+    """Lookup movies from given root_movie_dir."""
+    tmdb_api_key = ctx.obj["tmdb_api_key"]
+    output_dir = ctx.obj["output_dir"]
+    lax = ctx.obj["lax"]
+    parsing_style = ctx.obj["parsing_style"]
+    language = ctx.obj["language"]
+    root_movie_dir = Path(root_movie_dir)
 
     m = Movieparse(
-        output_dir=args.output_dir,
-        tmdb_api_key=args.tmdb_api_key,
-        parsing_style=args.parsing_style,
-        strict=args.lax,
-        language=args.language,
+        tmdb_api_key=tmdb_api_key,
+        output_dir=output_dir,
+        strict=lax,
+        parsing_style=parsing_style,
+        language=language,
     )
+    m.parse_root_movie_dir(root_movie_dir)
 
-    if args.root_movie_dir is not None:
-        m.parse_root_movie_dir(args.root_movie_dir)
-    elif args.movie_list is not None:
-        m.parse_movielist(args.movie_list)
-    m.write()
+
+@cli.command("list", help="Use given MOVIELIST to lookup metadata.")
+@click.argument("movielist", nargs=-1, required=True)
+@click.pass_context
+def from_list(ctx: Context, movielist: List[str]) -> None:
+    """Lookup movies from given movielist."""
+    tmdb_api_key = ctx.obj["tmdb_api_key"]
+    output_dir = ctx.obj["output_dir"]
+    lax = ctx.obj["lax"]
+    parsing_style = ctx.obj["parsing_style"]
+    language = ctx.obj["language"]
+
+    m = Movieparse(
+        tmdb_api_key=tmdb_api_key,
+        output_dir=output_dir,
+        strict=lax,
+        parsing_style=parsing_style,
+        language=language,
+    )
+    m.parse_movielist(movielist)
 
 
 if __name__ == "__main__":
-    main()
+    cli()

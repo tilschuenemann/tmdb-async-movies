@@ -162,7 +162,7 @@ class Movieparse:
           root_movie_dir: directory where movie subfolders lie
         """
         if root_movie_dir.is_dir() is False:
-            raise Exception("root_movie_dir has to a directory!")
+            raise Exception("root_movie_dir has to be a directory!")
 
         names = []
         for folder in root_movie_dir.iterdir():
