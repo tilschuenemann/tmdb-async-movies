@@ -192,7 +192,7 @@ def test_parse_root_movie_dir(
     with pytest.raises(Exception) as exc_info:
         x = Movieparse()
         x.parse_root_movie_dir(f)
-    assert str(exc_info.value) == "root_movie_dir has to a directory!"
+    assert str(exc_info.value) == "root_movie_dir has to be a directory!"
     f.unlink()
 
     # valid input
