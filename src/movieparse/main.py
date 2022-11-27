@@ -141,7 +141,7 @@ class Movieparse:
         """Parse movie metadata from movielist.
 
         Args:
-          movielist: List of titles (and optionally release years)
+          movielist: List of titles (and optionally release years).
         """
         if not movielist:
             raise Exception("movielist can't be empty!")
@@ -159,7 +159,7 @@ class Movieparse:
         """Parse movie metadata from folders inside root_movie_dir.
 
         Args:
-          root_movie_dir: directory where movie subfolders lie
+          root_movie_dir: directory where movie subfolders lie.
         """
         if root_movie_dir.is_dir() is False:
             raise Exception("root_movie_dir has to be a directory!")
