@@ -33,6 +33,8 @@ Distinction from other packages, `movieparse`:
 - casts all metadata dtypes so you don't have to.
 - can uses multiple sources of input and is easily extendable, as long as the input features movie title and release year.
 
+[You can also try the Streamlit showcase here.](https://tilschuenemann-showcase-showcasesstart-0ndtb3.streamlit.app/movieparse)
+
 ## Requirements
 
 You'll need to have a TMDB API key in order to make API requests. Either specify it on initialization of Movieparse or add it as environment variable:
