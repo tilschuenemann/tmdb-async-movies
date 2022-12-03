@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "movieparse"
-version = "0.0.0"
+version = "0.4.0"
 description = "Movieparse"
 authors = ["Til Schünemann <til.schuenemann@mailbox.org>"]
 license = "MIT"
