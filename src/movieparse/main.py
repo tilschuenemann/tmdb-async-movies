@@ -399,7 +399,7 @@ class Movieparse:
           df with casted columns.
         """
         types = {
-            # mapping .csv
+            # mapping.csv
             "tmdb_id": "int32",
             "tmdb_id_man": "int32",
             "input": object,  # can be both a string and a path!
