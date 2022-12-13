@@ -273,7 +273,9 @@ class Movieparse:
                     f"https://api.themoviedb.org/3/search/movie/?api_key={self._TMDB_API_KEY}&query={x}&year={y}&include_adult=true",
                     ssl=False,
                 )
-                for x, y in zip(canon_ext["disk_title"], canon_ext["disk_year"])
+                for x, y in zip(
+                    canon_ext["disk_title"], canon_ext["disk_year"], strict=True
+                )
             ]
         else:
             tasks = [
