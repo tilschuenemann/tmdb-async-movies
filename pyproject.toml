@@ -16,7 +16,7 @@ classifiers = [
 Changelog = "https://github.com/tilschuenemann/movieparse/releases"
 
 [tool.poetry.dependencies]
-python = "^3.10.7"
+python = "^3.10"
 click = ">=8.0.1"
 pandas = "^1.5.1"
 tqdm = "^4.64.1"
