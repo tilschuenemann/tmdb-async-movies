@@ -15,6 +15,7 @@ from movieparse.main import Movieparse
     "--tmdb-api-key",
     type=str,
     help="TMDB API Key. Falls back to environment variable TMDB_API_KEY.",
+    default=None,
 )
 @click.option(
     "-o",
@@ -99,6 +100,7 @@ def from_dir(ctx: Context, root_movie_dir: Path) -> None:
         language=language,
     )
     m.parse_root_movie_dir(root_movie_dir)
+    m.write()
 
 
 @cli.command("list", help="Use given MOVIELIST to lookup metadata.")
@@ -125,7 +127,8 @@ def from_list(ctx: Context, movielist: List[str]) -> None:
         language=language,
     )
     m.parse_movielist(movielist)
+    m.write()
 
 
 if __name__ == "__main__":
-    cli()
+    cli()  # pragma: no cover
