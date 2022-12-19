@@ -1,7 +1,7 @@
 """Module to use Movieparse with CLI."""
 
 from pathlib import Path
-from typing import List
+from typing import Tuple
 
 import click
 from click import Context
@@ -104,9 +104,9 @@ def from_dir(ctx: Context, root_movie_dir: Path) -> None:
 
 
 @cli.command("list", help="Use given MOVIELIST to lookup metadata.")
-@click.argument("movielist", nargs=-1, required=True)
+@click.argument("movielist", nargs=-1, type=str, required=True)
 @click.pass_context
-def from_list(ctx: Context, movielist: List[str]) -> None:
+def from_list(ctx: Context, movielist: Tuple[str]) -> None:
     """Lookup movies from given movielist.
 
     Args:
@@ -126,7 +126,7 @@ def from_list(ctx: Context, movielist: List[str]) -> None:
         parsing_style=parsing_style,
         language=language,
     )
-    m.parse_movielist(movielist)
+    m.parse_movielist(list(movielist))
     m.write()
 
 
