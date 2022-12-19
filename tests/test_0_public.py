@@ -12,7 +12,6 @@ bar = foo.FunctionBar()
 """
 
 from pathlib import Path
-from typing import List
 
 import pytest
 
@@ -61,56 +60,18 @@ def single_movie(root_movie_dir: Path) -> Path:
     return tmp
 
 
-@pytest.fixture
-def single_movie_conv2(root_movie_dir: Path) -> Path:
-    """Creates a single movie folder inside the root_movie_dir, using another naming convention.
-
-    Args:
-      root_movie_dir: root_movie_dir fixture
-    Returns:
-      single movie folder as path
-    """
-    tmp = root_movie_dir / "1999 - Fight Club"
-    tmp.mkdir()
-    return tmp
-
-
-@pytest.fixture
-def multiple_movies(root_movie_dir: Path) -> List[Path]:
-    """Creates a multiple movie folders inside the root_movie_dir.
-
-    Args:
-      root_movie_dir: root_movie_dir fixture
-    Returns:
-      list of paths of movie folders
-    """
-    paths = []
-    for subdir in [
-        "1999 The Matrix",
-        "2003 The Matrix Reloaded",
-        "2003 The Matrix Revolutions",
-    ]:
-        tmp = root_movie_dir / subdir
-        tmp.mkdir()
-        paths.append(tmp)
-    return paths
-
-
-def _filecount(dir: Path) -> int:
+def _filecount(directory: Path) -> int:
     """Counts amount of files in directory.
 
     Counts amount of files in directory.
 
     Args:
-      dir: parent directory for counting.
+      directory: parent directory for counting.
 
     Returns:
       int amount of files
     """
-    i = 0
-    for _file in dir.iterdir():
-        i += 1
-    return i
+    return sum(1 for _ in directory.glob("*"))
 
 
 def test_parse_movielist(output_dir: Path) -> None:
