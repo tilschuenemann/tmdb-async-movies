@@ -111,10 +111,7 @@ class Movieparse:
         if root_movie_dir.is_dir() is False:
             raise Exception("root_movie_dir has to be a directory!")
 
-        names = []
-        for folder in root_movie_dir.iterdir():
-            if folder.is_dir():
-                names.append(folder)
+        names = [f for f in root_movie_dir.iterdir() if f.is_dir()]
 
         self.mapping = pd.DataFrame(
             {
