@@ -1,6 +1,7 @@
 """Test cases for the __main__ module."""
 import os
 from pathlib import Path
+from typing import List
 
 import pytest
 from click.testing import CliRunner
@@ -56,21 +57,32 @@ def output_dir(tmp_path: Path) -> Path:
     return output_dir
 
 
+@pytest.fixture
+def args(output_dir: Path) -> List[str]:
+    """Fixture with all possible arguments in list."""
+    return [
+        "-t",
+        str(os.getenv("TMDB_API_KEY")),
+        "-lx",
+        "-l",
+        "en_US",
+        "-o",
+        str(output_dir),
+    ]
+
+
 def test_cli_dir(
-    runner: CliRunner, output_dir: Path, root_movie_dir: Path, single_movie: Path
+    runner: CliRunner,
+    output_dir: Path,
+    root_movie_dir: Path,
+    single_movie: Path,
+    args: List[str],
 ) -> None:
     """It exits with a status code of zero."""
-    tmdb_api_key = os.getenv("TMDB_API_KEY")
     result = runner.invoke(
         cli,
         [
-            "-o",
-            str(output_dir),
-            "-t",
-            tmdb_api_key,
-            "-lx",
-            "-l",
-            "en_US",
+            *args,
             "dir",
             str(root_movie_dir),
         ],
@@ -93,21 +105,14 @@ def test_cli_dir(
         assert (output_dir / f"{file}.csv").exists()
 
 
-def test_cli_list(runner: CliRunner, output_dir: Path) -> None:
+def test_cli_list(runner: CliRunner, output_dir: Path, args: List[str]) -> None:
     """It exits with a status code of zero."""
-    tmdb_api_key = os.getenv("TMDB_API_KEY")
     result = runner.invoke(
         cli,
         [
-            "-o",
-            str(output_dir),
-            "-t",
-            tmdb_api_key,
-            "-lx",
-            "-l",
-            "en_US",
+            *args,
             "list",
-            "1999 The Matrix",
+            ("1999 The Matrix"),
         ],
     )
 
