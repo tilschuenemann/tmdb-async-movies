@@ -79,9 +79,9 @@ class Movieparse:
           A dict mapping integer keys to their regex pattern.
         """
         return {
-            0: re.compile(r"^(?P<disk_year>\d{4})\s{1}(?P<disk_title>.+)$"),
-            1: re.compile(r"^(?P<disk_year>\d{4})\s-\s(?P<disk_title>.+)$"),
-            2: re.compile(r"^(?P<disk_title>.+)\s(?P<disk_year>\d{4})$"),
+            0: re.compile(r"^(?P<year>\d{4})\s{1}(?P<title>.+)$"),
+            1: re.compile(r"^(?P<year>\d{4})\s-\s(?P<title>.+)$"),
+            2: re.compile(r"^(?P<title>.+)\s(?P<year>\d{4})$"),
         }
 
     def parse_movielist(self, movielist: List[str]) -> None:
@@ -138,7 +138,7 @@ class Movieparse:
         asyncio.run(self._get_metadata())
 
     def _read_existing(self) -> None:
-        """Uses _table_iter() to read existing metadata and append to internal dataframes."""
+        """Read existing metadata and append to internal dataframes."""
         df_list = []
         for fname, df in self._metadata().items():
             tmp_path = self._OUTPUT_DIR / f"{fname}.csv"
@@ -265,9 +265,7 @@ class Movieparse:
                     f"https://api.themoviedb.org/3/search/movie/?api_key={self._TMDB_API_KEY}&query={x}&year={y}&include_adult=true",
                     ssl=False,
                 )
-                for x, y in zip(
-                    canon_ext["disk_title"], canon_ext["disk_year"], strict=True
-                )
+                for x, y in zip(canon_ext["title"], canon_ext["year"], strict=True)
             ]
         else:
             tasks = [
@@ -275,7 +273,7 @@ class Movieparse:
                     f"https://api.themoviedb.org/3/search/movie/?api_key={self._TMDB_API_KEY}&query={x}&include_adult=true",
                     ssl=False,
                 )
-                for x in canon_ext["disk_title"]
+                for x in canon_ext["title"]
             ]
 
         results = []
