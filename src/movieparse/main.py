@@ -1,12 +1,4 @@
-"""yaya.
-
-yaya.
-
-Typical usage example:
-
-foo = ClassFoo()
-bar = foo.FunctionBar()
-"""
+"""Movieparse."""
 
 import asyncio
 import os
@@ -45,19 +37,6 @@ class Movieparse:
         "BAD_RESPONSE": -3,
     }
 
-    @staticmethod
-    def get_parsing_patterns() -> dict[int, re.Pattern[str]]:
-        """Lists all valid patterns for extracting title and (optionally release year) from input.
-
-        Returns:
-          A dict mapping integer keys to their regex pattern.
-        """
-        return {
-            0: re.compile(r"^(?P<disk_year>\d{4})\s{1}(?P<disk_title>.+)$"),
-            1: re.compile(r"^(?P<disk_year>\d{4})\s-\s(?P<disk_title>.+)$"),
-            2: re.compile(r"^(?P<disk_title>.+)\s(?P<disk_year>\d{4})$"),
-        }
-
     def __init__(
         self,
         output_dir: Path | None = None,
@@ -92,50 +71,18 @@ class Movieparse:
 
         self._read_existing()
 
-    def _metadata(self) -> dict[str, pd.DataFrame]:
-        """Provides a dictionary for compactly allocating metadata.
+    @staticmethod
+    def get_parsing_patterns() -> dict[int, re.Pattern[str]]:
+        """Lists all valid patterns for extracting title and (optionally release year) from input.
 
         Returns:
-          Dictionary with filenames as keys and internal dataframes as values.
+          A dict mapping integer keys to their regex pattern.
         """
         return {
-            "cast": self.cast,
-            "collection": self.collect,
-            "crew": self.crew,
-            "genres": self.genres,
-            "production_companies": self.prod_comp,
-            "production_countries": self.prod_count,
-            "spoken_languages": self.spoken_langs,
-            "details": self.details,
+            0: re.compile(r"^(?P<disk_year>\d{4})\s{1}(?P<disk_title>.+)$"),
+            1: re.compile(r"^(?P<disk_year>\d{4})\s-\s(?P<disk_title>.+)$"),
+            2: re.compile(r"^(?P<disk_title>.+)\s(?P<disk_year>\d{4})$"),
         }
-
-    def _read_existing(self) -> None:
-        """Uses _table_iter() to read existing metadata and append to internal dataframes."""
-        df_list = []
-        for fname, df in self._metadata().items():
-            tmp_path = self._OUTPUT_DIR / f"{fname}.csv"
-            if tmp_path.exists():
-                df = pd.read_csv(tmp_path)
-                df = self._assign_types(df)
-            else:
-                df = pd.DataFrame()
-            df_list.append(df)
-
-        (
-            self.cast,
-            self.collect,
-            self.crew,
-            self.genres,
-            self.prod_comp,
-            self.prod_count,
-            self.spoken_langs,
-            self.details,
-        ) = df_list
-
-        tmp_path = self._OUTPUT_DIR / "mapping.csv"
-        if tmp_path.exists():
-            self.cached_mapping = pd.read_csv(tmp_path)
-            self.cached_mapping = self._assign_types(self.cached_mapping)
 
     def parse_movielist(self, movielist: List[str]) -> None:
         """Parse movie metadata from movielist.
@@ -189,6 +136,51 @@ class Movieparse:
         self._get_ids()
         self._update_metadata_lookup_ids()
         asyncio.run(self._get_metadata())
+
+    def _read_existing(self) -> None:
+        """Uses _table_iter() to read existing metadata and append to internal dataframes."""
+        df_list = []
+        for fname, df in self._metadata().items():
+            tmp_path = self._OUTPUT_DIR / f"{fname}.csv"
+            if tmp_path.exists():
+                df = pd.read_csv(tmp_path)
+                df = self._assign_types(df)
+            else:
+                df = pd.DataFrame()
+            df_list.append(df)
+
+        (
+            self.cast,
+            self.collect,
+            self.crew,
+            self.genres,
+            self.prod_comp,
+            self.prod_count,
+            self.spoken_langs,
+            self.details,
+        ) = df_list
+
+        tmp_path = self._OUTPUT_DIR / "mapping.csv"
+        if tmp_path.exists():
+            self.cached_mapping = pd.read_csv(tmp_path)
+            self.cached_mapping = self._assign_types(self.cached_mapping)
+
+    def _metadata(self) -> dict[str, pd.DataFrame]:
+        """Provides a dictionary for compactly allocating metadata.
+
+        Returns:
+          Dictionary with filenames as keys and internal dataframes as values.
+        """
+        return {
+            "cast": self.cast,
+            "collection": self.collect,
+            "crew": self.crew,
+            "genres": self.genres,
+            "production_companies": self.prod_comp,
+            "production_countries": self.prod_count,
+            "spoken_languages": self.spoken_langs,
+            "details": self.details,
+        }
 
     def _guess_parsing_style(self) -> None:
         """Iterates over canonical input, matching the _PARSING_STYLE  according to most matches.
@@ -321,6 +313,29 @@ class Movieparse:
 
         self.metadata_lookup_ids -= {x for x in self.default_codes.values()}
 
+    async def _get_metadata(self) -> None:
+        session = aiohttp.ClientSession()
+        tasks = [
+            session.get(
+                f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self._TMDB_API_KEY}&language={self._LANGUAGE}&append_to_response=credits",
+                ssl=False,
+            )
+            for tmdb_id in self.metadata_lookup_ids
+        ]
+
+        responses = [
+            await f
+            for f in tqdm(
+                asyncio.as_completed(tasks),
+                desc="{:<35}".format("getting metadata from TMDB"),
+                total=len(tasks),
+            )
+        ]
+        for response in tqdm(responses, desc="{:<35}".format("organizing responses")):
+            if response.status == 200:
+                self._dissect_metadata_response(await response.json())
+        await session.close()
+
     def _dissect_metadata_response(self, response: Dict[str, object]) -> None:
         results = []
         tmdb_id = response.pop("id")
@@ -357,29 +372,6 @@ class Movieparse:
             self.spoken_langs,
             self.details,
         ) = results
-
-    async def _get_metadata(self) -> None:
-        session = aiohttp.ClientSession()
-        tasks = [
-            session.get(
-                f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self._TMDB_API_KEY}&language={self._LANGUAGE}&append_to_response=credits",
-                ssl=False,
-            )
-            for tmdb_id in self.metadata_lookup_ids
-        ]
-
-        responses = [
-            await f
-            for f in tqdm(
-                asyncio.as_completed(tasks),
-                desc="{:<35}".format("getting metadata from TMDB"),
-                total=len(tasks),
-            )
-        ]
-        for response in tqdm(responses, desc="{:<35}".format("organizing responses")):
-            if response.status == 200:
-                self._dissect_metadata_response(await response.json())
-        await session.close()
 
     def write(self) -> None:
         """Writes all non-empty metadata dataframes as CSV files to output_dir."""
