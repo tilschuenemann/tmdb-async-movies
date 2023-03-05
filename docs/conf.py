@@ -1,7 +1,7 @@
 """Sphinx configuration."""
-project = "Movieparse"
+project = "TMDB Async"
 author = "Til Schünemann"
-copyright = "2022, Til Schünemann"
+copyright = "2023, Til Schünemann"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
