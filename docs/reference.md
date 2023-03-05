@@ -1,8 +1,8 @@
 # Reference
 
-## movieparse
+## tmdbasync
 
 ```{eval-rst}
-.. autoclass:: movieparse.main::Movieparse
+.. autoclass:: tmdbasync.main::Tmdb
   :members:
 ```

@@ -4,10 +4,10 @@
   "copyright_year": "2022",
   "development_status": "Development Status :: 3 - Alpha",
   "email": "\"\"",
-  "friendly_name": "Movieparse",
+  "friendly_name": "TMDB Async",
   "github_user": "tilschuenemann",
   "license": "MIT",
-  "package_name": "movieparse",
-  "project_name": "movieparse",
+  "package_name": "tmdbasync",
+  "project_name": "tmdbasync",
   "version": "0.0.0"
 }

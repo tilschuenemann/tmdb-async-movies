@@ -1,1 +1,1 @@
-"""Test suite for the movieparse package."""
+"""Test suite for the tmdbasync package."""
