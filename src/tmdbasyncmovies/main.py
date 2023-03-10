@@ -1,4 +1,4 @@
-"""TMDB Async, a Python package to asynchronously scrape movie metadata from the TMDB."""
+"""tmdbasyncmovies, a Python package to asynchronously scrape movie metadata from the TMDB."""
 
 import asyncio
 import os
@@ -15,8 +15,8 @@ import pandas as pd
 from tqdm import tqdm
 
 
-class Tmdb:
-    """TMDB Async."""
+class TmdbAsyncMovies:
+    """TMDB Async Movies."""
 
     naming_convention_map = {
         0: re.compile(r"^(?P<year>\d{4})\s{1}(?P<title>.+)$"),
