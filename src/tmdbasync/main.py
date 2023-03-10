@@ -141,7 +141,7 @@ class Tmdb:
           tmdb_ids: a set of TMDB IDs
 
         Returns:
-            dataframes: belongs_to_collection, genres ,production_companies, production_countries ,spoken_languages ,movie_details
+          dataframes: belongs_to_collection, genres ,production_companies, production_countries ,spoken_languages ,movie_details
         """
         tmdb_ids = {t for t in tmdb_ids if t >= 0}
 
