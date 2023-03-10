@@ -6,19 +6,18 @@ end-before: <!-- github-only -->
 
 [license]: license
 [contributor guide]: contributing
-[command-line reference]: usage
+[command-line reference]: cli
 
 ```{toctree}
 ---
 hidden:
-maxdepth: 1
+maxdepth: 3
 ---
-
-usage
-features
+cli
+python-api
 reference
 contributing
 Code of Conduct <codeofconduct>
 License <license>
-Changelog <https://github.com/tilschuenemann/movieparse/releases>
+Changelog <https://github.com/tilschuenemann/tmdbasync/releases>
 ```

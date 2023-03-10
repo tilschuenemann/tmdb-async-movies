@@ -14,7 +14,7 @@ from tmdbasync.main import Tmdb
     "-t",
     "--tmdb-api-key",
     type=str,
-    help="TMDB API Key. Falls back to environment variable TMDB_API_KEY.",
+    help="TMDB API Key. Falls back to environment variable TMDB_API_KEY if not specified.",
     default=None,
 )
 @click.option(
@@ -28,7 +28,7 @@ from tmdbasync.main import Tmdb
         writable=True,
         readable=True,
     ),
-    help="Output directory where files get written to.",
+    help="Output directory where metadata get written to.",
 )
 @click.option(
     "-a",
@@ -60,7 +60,7 @@ from tmdbasync.main import Tmdb
     help="Whether to submit another query using title only if title + year yields no result.",
 )
 @click.pass_context
-def cli(
+def tmdbasync(
     ctx: Context,
     tmdb_api_key: str | None,
     output_dir: Path | None,
@@ -69,7 +69,7 @@ def cli(
     naming_convention: int,
     backup_call: bool,
 ) -> None:
-    """Take general arguments and pass them as context object."""
+    """Tmdbasync CLI."""
     ctx.ensure_object(dict)
     ctx.obj["tmdb_api_key"] = tmdb_api_key
     ctx.obj["output_dir"] = output_dir
@@ -79,20 +79,20 @@ def cli(
     ctx.obj["backup_call"] = backup_call
 
 
-@cli.command("dir", help="Use ROOT_MOVIE_DIRs subfolder names to lookup metadata.")
+@tmdbasync.command("from_dir", help="Use MOVIE_DIRs subfolders as queries.")
 @click.argument(
-    "root_movie_dir",
+    "movie_dir",
     required=True,
     nargs=1,
     type=click.Path(path_type=Path, exists=True, file_okay=False, dir_okay=True),
 )
 @click.pass_context
-def from_dir(ctx: Context, root_movie_dir: Path) -> None:
-    """Lookup movies from given root_movie_dir.
+def from_dir(ctx: Context, movie_dir: Path) -> None:
+    """Lookup movies from given movie_dir.
 
     Args:
       ctx: context passed from cli options.
-      root_movie_dir: directory where movie subfolders lie.
+      movie_dir: directory where movie subfolders lie.
     """
     tmdb_api_key = ctx.obj["tmdb_api_key"]
     output_dir = ctx.obj["output_dir"]
@@ -100,8 +100,6 @@ def from_dir(ctx: Context, root_movie_dir: Path) -> None:
     language = ctx.obj["language"]
     naming_convention = ctx.obj["naming_convention"]
     backup_call = ctx.obj["backup_call"]
-
-    root_movie_dir = Path(root_movie_dir)
 
     t = Tmdb(
         tmdb_api_key=tmdb_api_key,
@@ -111,14 +109,14 @@ def from_dir(ctx: Context, root_movie_dir: Path) -> None:
         backup_call=backup_call,
     )
 
-    t.parse_movie_dirs(root_movie_dir)
+    t.parse_movie_dirs(Path(movie_dir))
     t.write(output_dir)
 
 
-@cli.command("list", help="Use given MOVIELIST to lookup metadata.")
-@click.argument("movielist", nargs=-1, type=str, required=True)
+@tmdbasync.command("from_input", help="Pass one or multiple queries.")
+@click.argument("INPUT", nargs=-1, type=str, required=True)
 @click.pass_context
-def from_list(ctx: Context, movielist: Tuple[str]) -> None:
+def from_input(ctx: Context, movielist: Tuple[str]) -> None:
     """Lookup movies from given movielist.
 
     Args:
@@ -145,4 +143,4 @@ def from_list(ctx: Context, movielist: Tuple[str]) -> None:
 
 
 if __name__ == "__main__":
-    cli()  # pragma: no cover
+    tmdbasync()  # pragma: no cover
