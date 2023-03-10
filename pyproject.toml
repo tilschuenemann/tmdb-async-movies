@@ -52,6 +52,8 @@ myst-parser = {version = ">=0.16.1"}
 types-requests = "^2.28.11.5"
 
 
+[tool.poetry.scripts]
+tmdbasync = "tmdbasync.cli:cli"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]

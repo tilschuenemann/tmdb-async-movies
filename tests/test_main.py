@@ -50,13 +50,13 @@ def test_search_id(m: Tmdb) -> None:
     canon_input = pd.DataFrame({"title": ["The Matrix"], "year": [1999]})
     assert asyncio.run(m.search_ids(canon_input)) == [603]
 
-    canon_input = pd.DataFrame({"title": ["The Matrix"], "year": [None]})
+    canon_input = pd.DataFrame({"title": ["The Matrix"], "year": [-1]})
     assert asyncio.run(m.search_ids(canon_input)) == [603]
 
-    canon_input = pd.DataFrame({"title": [""], "year": [None]})
+    canon_input = pd.DataFrame({"title": [""], "year": [-1]})
     assert asyncio.run(m.search_ids(canon_input)) == [-1]
 
-    canon_input = pd.DataFrame({"title": ["   "], "year": [None]})
+    canon_input = pd.DataFrame({"title": ["   "], "year": [-1]})
     assert asyncio.run(m.search_ids(canon_input)) == [-1]
 
 
