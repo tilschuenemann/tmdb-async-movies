@@ -1,7 +1,7 @@
 # Usage
 
-<!-- ```{eval-rst}
-.. click:: movieparse.cli:cli
-    :prog: movieparse
+```{eval-rst}
+.. click:: tmdbasync.cli:cli
+    :prog: tmdbasync
     :nested: full
-``` -->
+```
