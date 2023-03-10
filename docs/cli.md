@@ -1,8 +1,8 @@
 # CLI
 
 ```{eval-rst}
-.. click:: tmdbasync.cli:tmdbasync
-    :prog: tmdbasync
+.. click:: tmdbasyncmovies.cli:tmdbasyncmovies
+    :prog: tmdbasyncmovies
     :nested: full
 ```
 
@@ -11,7 +11,7 @@
 Looking up a movie from standard input:
 
 ```shell
-tmdbasync from_input "1999 The Matrix"
+tmdbasyncmovies from_input "1999 The Matrix"
 ```
 
 ---
@@ -19,7 +19,7 @@ tmdbasync from_input "1999 The Matrix"
 Looking up multiple movies from standard input:
 
 ```shell
-tmdbasync from_input "1999 The Matrix" "2003 The Matrix Revolutions"
+tmdbasyncmovies from_input "1999 The Matrix" "2003 The Matrix Revolutions"
 ```
 
 ---
@@ -35,5 +35,5 @@ ls /my/movie/dir
 ```
 
 ```shell
-tmdbasync from_dir /my/movie/dir
+tmdbasyncmovies from_dir /my/movie/dir
 ```

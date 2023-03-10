@@ -1,19 +1,19 @@
 [tool.poetry]
-name = "tmdbasync"
+name = "tmdbasyncmovies"
 version = "0.5.0"
-description = "TMDB Async"
+description = "tmdbasyncmovies"
 authors = ["Til Schünemann <til.schuenemann@mailbox.org>"]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/tilschuenemann/tmdbasync"
-repository = "https://github.com/tilschuenemann/tmdbasync"
-documentation = "https://tmdbasync.readthedocs.io"
+homepage = "https://github.com/tilschuenemann/tmdbasyncmovies"
+repository = "https://github.com/tilschuenemann/tmdbasyncmovies"
+documentation = "https://tmdbasyncmovies.readthedocs.io"
 classifiers = [
     "Development Status :: 3 - Alpha",
 ]
 
 [tool.poetry.urls]
-Changelog = "https://github.com/tilschuenemann/tmdbasync/releases"
+Changelog = "https://github.com/tilschuenemann/tmdbasyncmovies/releases"
 
 [tool.poetry.dependencies]
 python = "^3.10"
@@ -55,7 +55,7 @@ types-requests = "^2.28.11.5"
 line-length=120
 
 [tool.poetry.scripts]
-tmdbasync = "tmdbasync.cli:tmdbasync"
+tmdbasyncmovies = "tmdbasyncmovies.cli:tmdbasyncmovies"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
@@ -63,7 +63,7 @@ tests = ["tests", "*/tests"]
 
 [tool.coverage.run]
 branch = true
-source = ["tmdbasync", "tests"]
+source = ["tmdbasyncmovies", "tests"]
 
 [tool.coverage.report]
 show_missing = true

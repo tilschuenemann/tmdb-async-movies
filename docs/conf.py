@@ -1,5 +1,5 @@
 """Sphinx configuration."""
-project = "TMDB Async"
+project = "tmdbasyncmovies"
 author = "Til Schünemann"
 copyright = "2023, Til Schünemann"
 extensions = [

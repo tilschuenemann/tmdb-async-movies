@@ -6,7 +6,7 @@ from typing import Tuple
 import click
 from click import Context
 
-from tmdbasync.main import Tmdb
+from tmdbasyncmovies.main import TmdbAsyncMovies
 
 
 @click.group()
@@ -60,7 +60,7 @@ from tmdbasync.main import Tmdb
     help="Whether to submit another query using title only if title + year yields no result.",
 )
 @click.pass_context
-def tmdbasync(
+def tmdbasyncmovies(
     ctx: Context,
     tmdb_api_key: str | None,
     output_dir: Path | None,
@@ -79,7 +79,7 @@ def tmdbasync(
     ctx.obj["backup_call"] = backup_call
 
 
-@tmdbasync.command("from_dir", help="Use MOVIE_DIRs subfolders as queries.")
+@tmdbasyncmovies.command("from_dir", help="Use MOVIE_DIRs subfolders as queries.")
 @click.argument(
     "movie_dir",
     required=True,
@@ -101,7 +101,7 @@ def from_dir(ctx: Context, movie_dir: Path) -> None:
     naming_convention = ctx.obj["naming_convention"]
     backup_call = ctx.obj["backup_call"]
 
-    t = Tmdb(
+    t = TmdbAsyncMovies(
         tmdb_api_key=tmdb_api_key,
         include_adult=include_adult,
         language=language,
@@ -113,7 +113,7 @@ def from_dir(ctx: Context, movie_dir: Path) -> None:
     t.write(output_dir)
 
 
-@tmdbasync.command("from_input", help="Pass one or multiple queries.")
+@tmdbasyncmovies.command("from_input", help="Pass one or multiple queries.")
 @click.argument("INPUT", nargs=-1, type=str, required=True)
 @click.pass_context
 def from_input(ctx: Context, movielist: Tuple[str]) -> None:
@@ -130,7 +130,7 @@ def from_input(ctx: Context, movielist: Tuple[str]) -> None:
     naming_convention = ctx.obj["naming_convention"]
     backup_call = ctx.obj["backup_call"]
 
-    t = Tmdb(
+    t = TmdbAsyncMovies(
         tmdb_api_key=tmdb_api_key,
         include_adult=include_adult,
         language=language,
@@ -143,4 +143,4 @@ def from_input(ctx: Context, movielist: Tuple[str]) -> None:
 
 
 if __name__ == "__main__":
-    tmdbasync()  # pragma: no cover
+    tmdbasyncmovies()  # pragma: no cover
