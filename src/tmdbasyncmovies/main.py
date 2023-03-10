@@ -387,33 +387,33 @@ class TmdbAsyncMovies:
         """
         if schema == "canon_input":
             return {
-                "year": "int32",
+                "year": int,
                 "title": str,
-                "first_pass": "int32",
-                "second_pass": "int32",
-                "tmdb_id": "int32",
+                "first_pass": int,
+                "second_pass": int,
+                "tmdb_id": int,
             }
         elif schema == "cast":
             return {
-                "tmdb_id": "int32",
+                "tmdb_id": int,
                 "cast.adult": bool,
-                "cast.gender": "int8",
+                "cast.gender": int,
                 "cast.id": int,
                 "cast.known_for_department": "category",
                 "cast.name": str,
                 "cast.original_name": str,
                 "cast.popularity": float,
                 "cast.profile_path": str,
-                "cast.cast_id": "int8",
+                "cast.cast_id": int,
                 "cast.character": str,
                 "cast.credit_id": str,
-                "cast.order": "int8",
+                "cast.order": int,
             }
         elif schema == "crew":
             return {
-                "tmdb_id": "int32",
+                "tmdb_id": int,
                 "crew.adult": bool,
-                "crew.gender": "int8",
+                "crew.gender": int,
                 "crew.id": int,
                 "crew.known_for_department": "category",
                 "crew.name": str,
@@ -426,7 +426,7 @@ class TmdbAsyncMovies:
             }
         elif schema == "belongs_to_collection":
             return {
-                "tmdb_id": "int32",
+                "tmdb_id": int,
                 "belongs_to_collection.id": int,
                 "belongs_to_collection.name": str,
                 "belongs_to_collection.poster_path": str,
@@ -434,34 +434,34 @@ class TmdbAsyncMovies:
             }
         elif schema == "genres":
             return {
-                "tmdb_id": "int32",
-                "genres.id": "int8",
+                "tmdb_id": int,
+                "genres.id": int,
                 "genres.name": str,
             }
         elif schema == "production_companies":
             return {
-                "tmdb_id": "int32",
-                "production_companies.id": "int32",
+                "tmdb_id": int,
+                "production_companies.id": int,
                 "production_companies.logo_path": str,
                 "production_companies.name": "category",
                 "production_companies.origin_country": "category",
             }
         elif schema == "production_countries":
             return {
-                "tmdb_id": "int32",
+                "tmdb_id": int,
                 "production_countries.iso_3166_1": "category",
                 "production_countries.name": str,
             }
         elif schema == "spoken_languages":
             return {
-                "tmdb_id": "int32",
+                "tmdb_id": int,
                 "spoken_languages.english_name": "category",
                 "spoken_languages.iso_639_1": "category",
                 "spoken_languages.name": str,
             }
         elif schema == "movie_details":
             return {
-                "tmdb_id": "int32",
+                "tmdb_id": int,
                 "adult": bool,
                 "backdrop_path": str,
                 "budget": int,
@@ -474,13 +474,13 @@ class TmdbAsyncMovies:
                 "poster_path": str,
                 "release_date": "datetime64[ns]",
                 "revenue": int,
-                "runtime": "int16",
+                "runtime": int,
                 "status": "category",
                 "tagline": str,
                 "title": str,
                 "video": bool,
                 "vote_average": float,
-                "vote_count": "int16",
+                "vote_count": int,
             }
         else:
             raise KeyError("Specified SCHEMA is unknown!")

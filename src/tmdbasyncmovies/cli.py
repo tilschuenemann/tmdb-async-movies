@@ -42,6 +42,8 @@ from tmdbasyncmovies.main import TmdbAsyncMovies
     "-l",
     "--language",
     type=str,
+    default="en_US",
+    show_default=True,
     help="ISO-639-1 shortcode for getting locale information.",
 )
 @click.option(
@@ -49,6 +51,7 @@ from tmdbasyncmovies.main import TmdbAsyncMovies
     "--naming_convention",
     type=click.IntRange(-1, 1),
     show_default=True,
+    default=0,
     help="Define naming convention used for extracting title and year.",
 )
 @click.option(
@@ -114,14 +117,14 @@ def from_dir(ctx: Context, movie_dir: Path) -> None:
 
 
 @tmdbasyncmovies.command("from_input", help="Pass one or multiple queries.")
-@click.argument("INPUT", nargs=-1, type=str, required=True)
+@click.argument("QUERIES", nargs=-1, type=str, required=True)
 @click.pass_context
-def from_input(ctx: Context, movielist: Tuple[str]) -> None:
-    """Lookup movies from given movielist.
+def from_input(ctx: Context, queries: Tuple[str]) -> None:
+    """Lookup movies from given queries.
 
     Args:
       ctx: context passed from cli options.
-      movielist: List of titles (and optionally release years).
+      queries: List of titles (and optionally release years).
     """
     tmdb_api_key = ctx.obj["tmdb_api_key"]
     output_dir = ctx.obj["output_dir"]
@@ -138,7 +141,7 @@ def from_input(ctx: Context, movielist: Tuple[str]) -> None:
         backup_call=backup_call,
     )
 
-    t.generic_parse(list(movielist))
+    t.generic_parse(list(queries))
     t.write(output_dir)
 
 
