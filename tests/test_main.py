@@ -185,15 +185,10 @@ def test_initialization_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("TMDB_API_KEY")
     with pytest.raises(Exception) as exc_info:
         Tmdb()
-    assert (
-        str(exc_info.value)
-        == "Can't initialize tmdb, please provider a (proper) TMDB_API_KEY!"
-    )
+    assert str(exc_info.value) == "Can't initialize tmdb, please provider a (proper) TMDB_API_KEY!"
 
 
-def test_write(
-    m: Tmdb, _input_dir: Path, _output_dir: Path, _sample_movies: List[str]
-) -> None:
+def test_write(m: Tmdb, _input_dir: Path, _output_dir: Path, _sample_movies: List[str]) -> None:
     """Tests if all internal dataframes are written to output_dir."""
     m.generic_parse(_sample_movies)
     m.write(_output_dir)
@@ -245,9 +240,7 @@ def test_generic_parse_nobackup(m: Tmdb, _sample_movies: List[str]) -> None:
     assert m.spoken_languages.empty is False
 
 
-def test_generic_parse_invalid(
-    m: Tmdb, _input_dir: Path, _sample_movies: List[str]
-) -> None:
+def test_generic_parse_invalid(m: Tmdb, _input_dir: Path, _sample_movies: List[str]) -> None:
     """Tests generic parse with invalid input that has the right format."""
     # bad input
     m.generic_parse(["0000 some-non-existing-movie-title"])
@@ -276,3 +269,10 @@ def test_parse_movie_dirs(m: Tmdb, _input_dir: Path, _output_dir: Path) -> None:
     with pytest.raises(Exception) as exc_info:
         m.parse_movie_dirs(Path("non-existing-output-dir"))
     assert str(exc_info.value) == "Please provide a valid INPUT_PATH!"
+
+
+def test_get_schema_invalid(m: Tmdb) -> None:
+    """Tests for raising error if schema doesn't exist."""
+    with pytest.raises(KeyError) as exc_info:
+        m._get_schema("invalid-schema")
+    assert str(exc_info.value) == "'Specified SCHEMA is unknown!'"

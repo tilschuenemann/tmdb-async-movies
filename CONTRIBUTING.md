@@ -54,7 +54,7 @@ or the command-line interface:
 
 ```console
 $ poetry run python
-$ poetry run movieparse
+$ poetry run tmdbasync
 ```
 
 [poetry]: https://python-poetry.org/

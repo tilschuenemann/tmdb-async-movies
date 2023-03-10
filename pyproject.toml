@@ -51,9 +51,11 @@ xdoctest = {extras = ["colors"], version = ">=0.15.10"}
 myst-parser = {version = ">=0.16.1"}
 types-requests = "^2.28.11.5"
 
+[tool.black]
+line-length=120
 
 [tool.poetry.scripts]
-tmdbasync = "tmdbasync.cli:cli"
+tmdbasync = "tmdbasync.cli:tmdbasync"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]

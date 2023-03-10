@@ -4,6 +4,7 @@ import asyncio
 import os
 import re
 from pathlib import Path
+from typing import Dict
 from typing import List
 from typing import Set
 from typing import Tuple
@@ -22,119 +23,6 @@ class Tmdb:
         1: re.compile(r"^(?P<year>\d{4})\s{1}\-\s{1}(?P<title>.+)$"),
     }
 
-    canoninput_schema = {
-        "year": "int32",
-        "title": str,
-        "first_pass": "int32",
-        "second_pass": "int32",
-        "tmdb_id": "int32",
-    }
-
-    cast_schema = {
-        "tmdb_id": "int32",
-        "cast.adult": bool,
-        "cast.gender": "int8",
-        "cast.id": int,
-        "cast.known_for_department": "category",
-        "cast.name": str,
-        "cast.original_name": str,
-        "cast.popularity": float,
-        "cast.profile_path": str,
-        "cast.cast_id": "int8",
-        "cast.character": str,
-        "cast.credit_id": str,
-        "cast.order": "int8",
-    }
-
-    crew_schema = {
-        "tmdb_id": "int32",
-        "crew.adult": bool,
-        "crew.gender": "int8",
-        "crew.id": int,
-        "crew.known_for_department": "category",
-        "crew.name": str,
-        "crew.original_name": str,
-        "crew.popularity": float,
-        "crew.profile_path": str,
-        "crew.credit_id": str,
-        "crew.department": "category",
-        "crew.job": str,
-    }
-
-    belongs_to_collection_schema = {
-        "tmdb_id": "int32",
-        "belongs_to_collection.id": int,
-        "belongs_to_collection.name": str,
-        "belongs_to_collection.poster_path": str,
-        "belongs_to_collection.backdrop_path": str,
-    }
-
-    genres_schema = {
-        "tmdb_id": "int32",
-        "genres.id": "int8",
-        "genres.name": str,
-    }
-
-    production_companies_schema = {
-        "tmdb_id": "int32",
-        "production_companies.id": "int32",
-        "production_companies.logo_path": str,
-        "production_companies.name": "category",
-        "production_companies.origin_country": "category",
-    }
-
-    production_countries_schema = {
-        "tmdb_id": "int32",
-        "production_countries.iso_3166_1": "category",
-        "production_countries.name": str,
-    }
-
-    spoken_languages_schema = {
-        "tmdb_id": "int32",
-        "spoken_languages.english_name": "category",
-        "spoken_languages.iso_639_1": "category",
-        "spoken_languages.name": str,
-    }
-
-    movie_details_schema = {
-        "tmdb_id": "int32",
-        "adult": bool,
-        "backdrop_path": str,
-        "budget": int,
-        "homepage": str,
-        "imdb_id": str,
-        "original_language": "category",
-        "original_title": str,
-        "overview": str,
-        "popularity": float,
-        "poster_path": str,
-        "release_date": "datetime64[ns]",
-        "revenue": int,
-        "runtime": "int16",
-        "status": "category",
-        "tagline": str,
-        "title": str,
-        "video": bool,
-        "vote_average": float,
-        "vote_count": "int16",
-    }
-
-    canon_input = pd.DataFrame(columns=[c for c in canoninput_schema.keys()])
-    belongs_to_collection = pd.DataFrame(
-        columns=[c for c in belongs_to_collection_schema.keys()]
-    )
-    cast = pd.DataFrame(columns=[c for c in cast_schema.keys()])
-    crew = pd.DataFrame(columns=[c for c in crew_schema.keys()])
-    genres = pd.DataFrame(columns=[c for c in genres_schema.keys()])
-    movie_details = pd.DataFrame(columns=[c for c in movie_details_schema.keys()])
-    production_companies = pd.DataFrame(
-        columns=[c for c in production_companies_schema.keys()]
-    )
-    production_countries = pd.DataFrame(
-        columns=[c for c in production_countries_schema.keys()]
-    )
-    spoken_languages = pd.DataFrame(columns=[c for c in spoken_languages_schema.keys()])
-
     def __init__(
         self,
         tmdb_api_key: str | None = None,
@@ -143,18 +31,21 @@ class Tmdb:
         naming_convention: int = 0,
         backup_call: bool = True,
     ):
-        """Initializes TMDB Async."""
+        """Initializes TMDB Async.
+
+        Args:
+          tmdb_api_key: TMDB API Key. Falls back to environment variable TMDB_API_KEY if not specified.
+          include_adult: Whether to include adult results.
+          language: ISO-639-1 shortcode for getting locale information.
+          naming_convention: Naming convention used for extracting title and year.
+          backup_call: Whether to submit another query using title only if title + year yields no result.
+        """
         if tmdb_api_key is not None and len(tmdb_api_key) == 32:
             self.tmdb_api_key = tmdb_api_key
-        elif (
-            os.getenv("TMDB_API_KEY", "") != ""
-            and len(os.getenv("TMDB_API_KEY", "")) == 32
-        ):
+        elif os.getenv("TMDB_API_KEY", "") != "" and len(os.getenv("TMDB_API_KEY", "")) == 32:
             self.tmdb_api_key = os.getenv("TMDB_API_KEY", "")
         else:
-            raise Exception(
-                "Can't initialize tmdb, please provider a (proper) TMDB_API_KEY!"
-            )
+            raise Exception("Can't initialize tmdb, please provider a (proper) TMDB_API_KEY!")
 
         if naming_convention not in self.naming_convention_map.keys():
             raise Exception("Please provide a proper NAMING_CONVENTION!")
@@ -164,14 +55,44 @@ class Tmdb:
         self.language = language
         self.backup_call = backup_call
 
+        internal_dfs = []
+        for df in [
+            "belongs_to_collection",
+            "canon_input",
+            "cast",
+            "crew",
+            "genres",
+            "movie_details",
+            "production_companies",
+            "production_countries",
+            "spoken_languages",
+        ]:
+            tmp_df = pd.DataFrame(columns=[k for k in self._get_schema(df).keys()])
+            internal_dfs.append(tmp_df)
+        (
+            self.belongs_to_collection,
+            self.canon_input,
+            self.cast,
+            self.crew,
+            self.genres,
+            self.movie_details,
+            self.production_companies,
+            self.production_countries,
+            self.spoken_languages,
+        ) = internal_dfs
+
     async def search_ids(self, canon_input: pd.DataFrame) -> List[int]:
         """Given a canonical input TMDB IDs are searched.
 
-        Canonical input is a dataframe with title and year column.
+        Args:
+          canon_input: dataframe with title and year column
+
+        Returns:
+          list of TMDB IDs
         """
         results: List[int] = []
 
-        if canon_input.empty:
+        if canon_input.empty or {"title", "year"}.issubset(canon_input.columns) is False:
             return results
 
         async with aiohttp.ClientSession() as session:
@@ -213,15 +134,15 @@ class Tmdb:
 
     async def get_movie_details(
         self, tmdb_ids: Set[int]
-    ) -> Tuple[
-        pd.DataFrame,
-        pd.DataFrame,
-        pd.DataFrame,
-        pd.DataFrame,
-        pd.DataFrame,
-        pd.DataFrame,
-    ]:
-        """For a given set of TMDB IDs movie details are searched, stored and returned."""
+    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame,]:
+        """For a given set of TMDB IDs movie details are searched, stored and returned.
+
+        Args:
+          tmdb_ids: a set of TMDB IDs
+
+        Returns:
+            dataframes: belongs_to_collection, genres ,production_companies, production_countries ,spoken_languages ,movie_details
+        """
         tmdb_ids = {t for t in tmdb_ids if t >= 0}
 
         async with aiohttp.ClientSession() as session:
@@ -285,24 +206,16 @@ class Tmdb:
                         ignore_index=True,
                     )
 
-                    spoken_languages = pd.json_normalize(
-                        resp["spoken_languages"]
-                    ).add_prefix("spoken_languages.")
+                    spoken_languages = pd.json_normalize(resp["spoken_languages"]).add_prefix("spoken_languages.")
                     spoken_languages["tmdb_id"] = tmdb_id
                     resp["spoken_languages"] = None
-                    self.spoken_languages = pd.concat(
-                        [self.spoken_languages, spoken_languages], ignore_index=True
-                    )
+                    self.spoken_languages = pd.concat([self.spoken_languages, spoken_languages], ignore_index=True)
 
                     resp["tmdb_id"] = resp.pop("id", None)
 
                     movie_details = pd.json_normalize(resp)
-                    self.movie_details = self.movie_details.astype(
-                        {"adult": bool, "video": bool}, errors="ignore"
-                    )
-                    self.movie_details = pd.concat(
-                        [self.movie_details, movie_details], ignore_index=True
-                    )
+                    self.movie_details = self.movie_details.astype({"adult": bool, "video": bool}, errors="ignore")
+                    self.movie_details = pd.concat([self.movie_details, movie_details], ignore_index=True)
         return (
             self.belongs_to_collection,
             self.genres,
@@ -312,10 +225,15 @@ class Tmdb:
             self.movie_details,
         )
 
-    async def get_movie_credits(
-        self, tmdb_ids: Set[int]
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """For a given set of TMDB IDs movie credits are searched, stored and returned."""
+    async def get_movie_credits(self, tmdb_ids: Set[int]) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """For a given set of TMDB IDs movie credits are searched, stored and returned.
+
+        Args:
+          tmdb_ids: a set of TMDB IDs
+
+        Returns:
+          dataframes: cast, crew
+        """
         tmdb_ids = {t for t in tmdb_ids if t >= 0}
 
         async with aiohttp.ClientSession() as session:
@@ -343,17 +261,13 @@ class Tmdb:
                     cast = pd.json_normalize(resp["cast"]).add_prefix("cast.")
                     cast["tmdb_id"] = tmdb_id
                     resp["cast"] = None
-                    self.cast["cast.adult"] = self.cast["cast.adult"].astype(
-                        bool, errors="ignore"
-                    )
+                    self.cast["cast.adult"] = self.cast["cast.adult"].astype(bool, errors="ignore")
                     self.cast = pd.concat([self.cast, cast], ignore_index=True)
 
                     crew = pd.json_normalize(resp["crew"]).add_prefix("crew.")
                     crew["tmdb_id"] = tmdb_id
                     resp["crew"] = None
-                    self.crew["crew.adult"] = self.crew["crew.adult"].astype(
-                        bool, errors="ignore"
-                    )
+                    self.crew["crew.adult"] = self.crew["crew.adult"].astype(bool, errors="ignore")
                     self.crew = pd.concat([self.crew, crew], ignore_index=True)
 
         return (
@@ -364,10 +278,14 @@ class Tmdb:
     def write(self, output_path: Path) -> None:
         """Writes all internal tables to output_path.
 
-        Raises exception if output_path doesn't exist.
+        Args:
+          output_path: path where files should get written to.
+
+        Raises:
+          FileNotFoundError
         """
         if output_path.exists() is False:
-            raise Exception("Can't write data as OUTPUT_PATH doesn't exist!")
+            raise FileNotFoundError("Can't write data as OUTPUT_PATH doesn't exist!")
 
         filename_map = {
             "canon_input.csv": self.canon_input,
@@ -390,7 +308,11 @@ class Tmdb:
             )
 
     def generic_parse(self, queries: List[str]) -> None:
-        """For a list of given queries, their TMDB IDs will be searched and used to lookup movie details and cast."""
+        """For a list of given queries, their TMDB IDs will be searched and used to lookup movie details and cast.
+
+        Args:
+          queries: list of strings
+        """
         tmp_input = pd.DataFrame({"queries": queries})
         self.canon_input = tmp_input["queries"].str.extract(self.naming_convention)
         self.canon_input = self.canon_input.dropna(how="all").reset_index(drop=True)
@@ -400,20 +322,14 @@ class Tmdb:
         self.canon_input["first_pass"] = asyncio.run(self.search_ids(self.canon_input))
 
         if self.backup_call is True:
-            missing_tmdb_ids = self.canon_input[
-                self.canon_input["first_pass"] == -1
-            ].copy()
+            missing_tmdb_ids = self.canon_input[self.canon_input["first_pass"] == -1].copy()
             missing_tmdb_ids["year"] = -1
 
-            missing_tmdb_ids["second_pass"] = asyncio.run(
-                self.search_ids(missing_tmdb_ids)
-            )
+            missing_tmdb_ids["second_pass"] = asyncio.run(self.search_ids(missing_tmdb_ids))
 
             self.canon_input = self.canon_input.join(missing_tmdb_ids[["second_pass"]])
             self.canon_input["second_pass"] = self.canon_input["second_pass"].fillna(-1)
-            self.canon_input["second_pass"] = self.canon_input["second_pass"].astype(
-                "int"
-            )
+            self.canon_input["second_pass"] = self.canon_input["second_pass"].astype("int")
 
             self.canon_input["tmdb_id"] = np.where(
                 self.canon_input["second_pass"] != -1,
@@ -432,28 +348,139 @@ class Tmdb:
         self._assign_types()
 
     def parse_movie_dirs(self, input_path: Path) -> None:
-        """For a given input path, subfolders will be used for quering the TMDB for metadata."""
+        """For a given input path, subfolders will be used for quering the TMDB for metadata.
+
+        Args:
+          queries: list of strings
+
+        Raises:
+          FileNotFoundError, if input_path doesn't exist.
+        """
         if input_path.exists() is False:
-            raise Exception("Please provide a valid INPUT_PATH!")
+            raise FileNotFoundError("Please provide a valid INPUT_PATH!")
         input_folders = [f.name for f in input_path.iterdir() if f.is_dir()]
         self.generic_parse(input_folders)
 
     def _assign_types(self) -> None:
+        """Converts all columns in all dataframes to their correct type."""
+        self.canon_input = self.canon_input.astype(self._get_schema("canon_input"))
+        self.cast = self.cast.astype(self._get_schema("cast"))
+        self.crew = self.crew.astype(self._get_schema("crew"))
+        self.belongs_to_collection = self.belongs_to_collection.astype(self._get_schema("belongs_to_collection"))
+        self.genres = self.genres.astype(self._get_schema("genres"))
+        self.production_companies = self.production_companies.astype(self._get_schema("production_companies"))
+        self.production_countries = self.production_countries.astype(self._get_schema("production_countries"))
+        self.spoken_languages = self.spoken_languages.astype(self._get_schema("spoken_languages"))
+        self.movie_details = self.movie_details.astype(self._get_schema("movie_details"))
 
-        self.canon_input = self.canon_input.astype(self.canoninput_schema)
-        self.cast = self.cast.astype(self.cast_schema)
-        self.crew = self.crew.astype(self.crew_schema)
-        self.belongs_to_collection = self.belongs_to_collection.astype(
-            self.belongs_to_collection_schema
-        )
-        self.genres = self.genres.astype(self.genres_schema)
-        self.production_companies = self.production_companies.astype(
-            self.production_companies_schema
-        )
-        self.production_countries = self.production_countries.astype(
-            self.production_countries_schema
-        )
-        self.spoken_languages = self.spoken_languages.astype(
-            self.spoken_languages_schema
-        )
-        self.movie_details = self.movie_details.astype(self.movie_details_schema)
+    def _get_schema(self, schema: str) -> Dict[str, object]:
+        """Returns specified schema as dictionary.
+
+        Args:
+          schema: which schema to return
+
+        Returns:
+          Dictionary containing column-type mapping.
+
+        Raises:
+          KeyError, if specified schema is not a valid schema.
+        """
+        if schema == "canon_input":
+            return {
+                "year": "int32",
+                "title": str,
+                "first_pass": "int32",
+                "second_pass": "int32",
+                "tmdb_id": "int32",
+            }
+        elif schema == "cast":
+            return {
+                "tmdb_id": "int32",
+                "cast.adult": bool,
+                "cast.gender": "int8",
+                "cast.id": int,
+                "cast.known_for_department": "category",
+                "cast.name": str,
+                "cast.original_name": str,
+                "cast.popularity": float,
+                "cast.profile_path": str,
+                "cast.cast_id": "int8",
+                "cast.character": str,
+                "cast.credit_id": str,
+                "cast.order": "int8",
+            }
+        elif schema == "crew":
+            return {
+                "tmdb_id": "int32",
+                "crew.adult": bool,
+                "crew.gender": "int8",
+                "crew.id": int,
+                "crew.known_for_department": "category",
+                "crew.name": str,
+                "crew.original_name": str,
+                "crew.popularity": float,
+                "crew.profile_path": str,
+                "crew.credit_id": str,
+                "crew.department": "category",
+                "crew.job": str,
+            }
+        elif schema == "belongs_to_collection":
+            return {
+                "tmdb_id": "int32",
+                "belongs_to_collection.id": int,
+                "belongs_to_collection.name": str,
+                "belongs_to_collection.poster_path": str,
+                "belongs_to_collection.backdrop_path": str,
+            }
+        elif schema == "genres":
+            return {
+                "tmdb_id": "int32",
+                "genres.id": "int8",
+                "genres.name": str,
+            }
+        elif schema == "production_companies":
+            return {
+                "tmdb_id": "int32",
+                "production_companies.id": "int32",
+                "production_companies.logo_path": str,
+                "production_companies.name": "category",
+                "production_companies.origin_country": "category",
+            }
+        elif schema == "production_countries":
+            return {
+                "tmdb_id": "int32",
+                "production_countries.iso_3166_1": "category",
+                "production_countries.name": str,
+            }
+        elif schema == "spoken_languages":
+            return {
+                "tmdb_id": "int32",
+                "spoken_languages.english_name": "category",
+                "spoken_languages.iso_639_1": "category",
+                "spoken_languages.name": str,
+            }
+        elif schema == "movie_details":
+            return {
+                "tmdb_id": "int32",
+                "adult": bool,
+                "backdrop_path": str,
+                "budget": int,
+                "homepage": str,
+                "imdb_id": str,
+                "original_language": "category",
+                "original_title": str,
+                "overview": str,
+                "popularity": float,
+                "poster_path": str,
+                "release_date": "datetime64[ns]",
+                "revenue": int,
+                "runtime": "int16",
+                "status": "category",
+                "tagline": str,
+                "title": str,
+                "video": bool,
+                "vote_average": float,
+                "vote_count": "int16",
+            }
+        else:
+            raise KeyError("Specified SCHEMA is unknown!")

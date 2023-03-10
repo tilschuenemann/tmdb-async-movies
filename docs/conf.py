@@ -12,5 +12,3 @@ extensions = [
 ]
 autodoc_typehints = "signature"
 html_theme = "sphinx_rtd_theme"
-
-html_theme_options = {"navigation_depth": 3, "collapse_navigation": True}
