@@ -2,6 +2,7 @@
 import asyncio
 from pathlib import Path
 from typing import List
+from typing import Set
 
 import pandas as pd
 import pytest
@@ -40,55 +41,50 @@ def _output_dir(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def m() -> TmdbAsyncMovies:
+def t() -> TmdbAsyncMovies:
     """Returns a TMDB class."""
     return TmdbAsyncMovies()
 
 
-def test_search_id(m: TmdbAsyncMovies) -> None:
-    """Tests for correct handling of canonical input."""
-    canon_input = pd.DataFrame({"title": ["The Matrix"], "year": [1999]})
-    assert asyncio.run(m.search_ids(canon_input)) == [603]
-
-    canon_input = pd.DataFrame({"title": ["The Matrix"], "year": [-1]})
-    assert asyncio.run(m.search_ids(canon_input)) == [603]
-
-    canon_input = pd.DataFrame({"title": [""], "year": [-1]})
-    assert asyncio.run(m.search_ids(canon_input)) == [-1]
-
-    canon_input = pd.DataFrame({"title": ["   "], "year": [-1]})
-    assert asyncio.run(m.search_ids(canon_input)) == [-1]
-
-
-def test_get_movie_details_badtmdbids(m: TmdbAsyncMovies) -> None:
-    """TMDB_IDs can only be a positive integer.
-
-    some TMDB_IDs don't exist (0, 1) or are a collection (10).
-    """
-    bad_tmdb_ids = {-1, 0, 1, 10}
-    for i in bad_tmdb_ids:
+@pytest.mark.parametrize(
+    "tt,canon_input,expected_id",
+    [
+        (TmdbAsyncMovies(), pd.DataFrame({"title": ["The Matrix"], "year": [1999]}), 603),
+        (TmdbAsyncMovies(), pd.DataFrame({"title": ["The Matrix"], "year": [-1]}), 603),
+        (TmdbAsyncMovies(), pd.DataFrame({"title": [""], "year": [-1]}), -1),
+        (TmdbAsyncMovies(), pd.DataFrame({"title": [" "], "year": [-1]}), -1),
+        (TmdbAsyncMovies(), pd.DataFrame(), -1),  # missing title and year columns
         (
-            belongs_to_collection,
-            genres,
-            production_companies,
-            production_countries,
-            spoken_languages,
-            movie_details,
-        ) = asyncio.run(m.get_movie_details({i}))
+            TmdbAsyncMovies(),
+            pd.DataFrame(columns=["title", "year"]),
+            -1,
+        ),  # has no records
+    ],
+)
+def test_search_ids(tt: TmdbAsyncMovies, canon_input: pd.DataFrame, expected_id: int) -> None:
+    """Tests for correct handling of canonical input."""
+    if canon_input.empty is False:
+        result = asyncio.run(tt.search_ids(canon_input))
+        assert set(result["tmdb_id"]) == {expected_id}
+    else:
+        result = asyncio.run(tt.search_ids(canon_input))
+        assert result.empty
 
-        assert belongs_to_collection.empty
-        assert genres.empty
-        assert production_companies.empty
-        assert production_countries.empty
-        assert spoken_languages.empty
-        assert movie_details.empty
 
-
-def test_get_movie_details_collection(m: TmdbAsyncMovies) -> None:
-    """Tests if movie_details are returned for a given TMDB ID.
-
-    603 belongs to collection.
-    """
+@pytest.mark.parametrize(
+    "tt,tmdb_id_set,empty_metadata,empty_collection",
+    [
+        (TmdbAsyncMovies(), {-1}, True, True),  # TMDB ID can't be negative
+        (TmdbAsyncMovies(), {0}, True, True),  # TMDB ID doesn't exist
+        (TmdbAsyncMovies(), {2}, False, True),  # features no collection
+        (TmdbAsyncMovies(), {603}, False, False),  # features collection
+        (TmdbAsyncMovies(), {}, True, True),  # empty input
+    ],
+)
+def test_get_movie_details(
+    tt: TmdbAsyncMovies, tmdb_id_set: Set[int], empty_metadata: bool, empty_collection: bool
+) -> None:
+    """Tests if requests for TMDB IDs are handled correctly and if metadata is set correctly."""
     (
         belongs_to_collection,
         genres,
@@ -96,102 +92,97 @@ def test_get_movie_details_collection(m: TmdbAsyncMovies) -> None:
         production_countries,
         spoken_languages,
         movie_details,
-    ) = asyncio.run(m.get_movie_details({603}))
-    assert belongs_to_collection.empty is False
-    assert genres.empty is False
-    assert production_companies.empty is False
-    assert production_countries.empty is False
-    assert spoken_languages.empty is False
-    assert movie_details.empty is False
+    ) = asyncio.run(tt.get_movie_details(tmdb_id_set))
 
-    assert m.belongs_to_collection.empty is False
-    assert m.genres.empty is False
-    assert m.production_companies.empty is False
-    assert m.production_countries.empty is False
-    assert m.spoken_languages.empty is False
-    assert m.movie_details.empty is False
+    assert belongs_to_collection.empty is empty_collection
+    assert genres.empty is empty_metadata
+    assert movie_details.empty is empty_metadata
+    assert production_companies.empty is empty_metadata
+    assert production_countries.empty is empty_metadata
+    assert spoken_languages.empty is empty_metadata
 
-
-def test_get_movie_details_no_collection(m: TmdbAsyncMovies) -> None:
-    """Same as test_get_movie_details_collection, but for a TMDB ID that doesn't belong to a collection."""
-    (
-        belongs_to_collection,
-        genres,
-        production_companies,
-        production_countries,
-        spoken_languages,
-        movie_details,
-    ) = asyncio.run(m.get_movie_details({2}))
-    assert belongs_to_collection.empty is True
-    assert genres.empty is False
-    assert production_companies.empty is False
-    assert production_countries.empty is False
-    assert spoken_languages.empty is False
-    assert movie_details.empty is False
+    assert tt.belongs_to_collection.empty is empty_collection
+    assert tt.genres.empty is empty_metadata
+    assert tt.movie_details.empty is empty_metadata
+    assert tt.production_companies.empty is empty_metadata
+    assert tt.production_countries.empty is empty_metadata
+    assert tt.spoken_languages.empty is empty_metadata
 
 
-def test_get_credits_badtmdbids(m: TmdbAsyncMovies) -> None:
-    """Tests if credits are empty when searching with invalid TMDB IDs."""
-    bad_tmdb_ids = {-1, 0, 1, 10}
-    for i in bad_tmdb_ids:
-        cast, crew = asyncio.run(m.get_movie_credits({i}))
-        assert cast.empty
-        assert crew.empty
+@pytest.mark.parametrize(
+    "tt,tmdb_id_set,empty_cast,empty_crew",
+    [
+        (TmdbAsyncMovies(), {-1}, True, True),  # TMDB ID can't be negative
+        (TmdbAsyncMovies(), {0}, True, True),  # TMDB ID doesn't exist
+        (TmdbAsyncMovies(), {603}, False, False),  # valid TMDB ID
+        (TmdbAsyncMovies(), {}, True, True),  # empty input
+    ],
+)
+def test_get_credits(tt: TmdbAsyncMovies, tmdb_id_set: Set[int], empty_cast: bool, empty_crew: bool) -> None:
+    """Tests if requests for movie_details are handled correctly and if metadata is set correctly."""
+    cast, crew = asyncio.run(tt.get_movie_credits(tmdb_id_set))
+    assert cast.empty is empty_cast
+    assert crew.empty is empty_crew
+    assert tt.cast.empty is empty_cast
+    assert tt.crew.empty is empty_crew
 
 
-def test_get_credits_valid(m: TmdbAsyncMovies) -> None:
-    """Tests if credits are not empty when searching with valid TMDB IDs."""
-    cast, crew = asyncio.run(m.get_movie_credits({604}))
-    assert cast.empty is False
-    assert crew.empty is False
-    assert m.cast.empty is False
-    assert m.crew.empty is False
-
-
-def test_initialization_valid() -> None:
+@pytest.mark.parametrize(
+    "tmdb_api_key,include_adult,language,naming_convention,backup_call,case",
+    [
+        ("bad-api-key---------------------", False, "te_ST", 0, False, "valid"),
+        ("bad-api-key---------------------", False, "te_ST", -1, False, "bad_naming_convention"),
+        (None, False, "te_ST", 0, False, "missing_tmdb_api_key"),
+    ],
+)
+def test_initialization(
+    tmdb_api_key: str | None,
+    include_adult: bool,
+    language: str,
+    naming_convention: int,
+    backup_call: bool,
+    case: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Tests if all internal attributes are set correctly after initialization."""
-    m = TmdbAsyncMovies(
-        tmdb_api_key="abcdefghabcdefghabcdefghabcdefgh",
-        include_adult=False,
-        language="te_ST",
-        naming_convention=1,
-        backup_call=False,
-    )
-    assert m.tmdb_api_key == "abcdefghabcdefghabcdefghabcdefgh"
-    assert m.include_adult is False
-    assert m.language == "te_ST"
-    assert m.backup_call is False
-    # TODO check for compiled regex pattern
-    # assert m.naming_convention == 1
+    if case == "valid":
+        t = TmdbAsyncMovies(
+            tmdb_api_key=tmdb_api_key,
+            include_adult=include_adult,
+            language=language,
+            naming_convention=naming_convention,
+            backup_call=backup_call,
+        )
+        assert t.tmdb_api_key == tmdb_api_key
+        assert t.include_adult is include_adult
+        assert t.language == language
+        assert t.naming_convention == t.naming_convention_map[naming_convention]
+        assert t.backup_call is backup_call
 
-    assert m.canon_input.empty
-
-    assert m.belongs_to_collection.empty
-    assert m.cast.empty
-    assert m.crew.empty
-    assert m.genres.empty
-    assert m.movie_details.empty
-    assert m.production_companies.empty
-    assert m.production_countries.empty
-    assert m.spoken_languages.empty
-
-
-def test_initialization_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Tests if errors are raised init parameters are invalid."""
-    with pytest.raises(Exception) as exc_info:
-        TmdbAsyncMovies(tmdb_api_key="abcdefghabcdefghabcdefghabcdefgh", naming_convention=-1)
-    assert str(exc_info.value) == "Please provide a proper NAMING_CONVENTION!"
-
-    monkeypatch.delenv("TMDB_API_KEY")
-    with pytest.raises(Exception) as exc_info:
-        TmdbAsyncMovies()
-    assert str(exc_info.value) == "Can't initialize tmdb, please provider a (proper) TMDB_API_KEY!"
+        assert t.canon_input.empty
+        assert t.belongs_to_collection.empty
+        assert t.cast.empty
+        assert t.crew.empty
+        assert t.genres.empty
+        assert t.movie_details.empty
+        assert t.production_companies.empty
+        assert t.production_countries.empty
+        assert t.spoken_languages.empty
+    elif case == "bad_naming_convention":
+        with pytest.raises(Exception) as exc_info:
+            TmdbAsyncMovies(naming_convention=naming_convention)
+        assert str(exc_info.value) == "Please provide a proper NAMING_CONVENTION!"
+    else:
+        monkeypatch.delenv("TMDB_API_KEY")
+        with pytest.raises(Exception) as exc_info:
+            TmdbAsyncMovies()
+        assert str(exc_info.value) == "Can't initialize tmdb, please provider a (proper) TMDB_API_KEY!"
 
 
-def test_write(m: TmdbAsyncMovies, _input_dir: Path, _output_dir: Path, _sample_movies: List[str]) -> None:
+def test_write(t: TmdbAsyncMovies, _input_dir: Path, _output_dir: Path, _sample_movies: List[str]) -> None:
     """Tests if all internal dataframes are written to output_dir."""
-    m.generic_parse(_sample_movies)
-    m.write(_output_dir)
+    t.generic_parse(_sample_movies)
+    t.write(_output_dir)
     files = [
         "belongs_to_collection.csv",
         "cast.csv",
@@ -207,72 +198,56 @@ def test_write(m: TmdbAsyncMovies, _input_dir: Path, _output_dir: Path, _sample_
 
     # bad output path
     with pytest.raises(Exception) as exc_info:
-        m.write(Path("non-existing-output-dir"))
+        t.write(Path("non-existing-output-dir"))
     assert str(exc_info.value) == "Can't write data as OUTPUT_PATH doesn't exist!"
 
 
-def test_generic_parse_backup(m: TmdbAsyncMovies, _sample_movies: List[str]) -> None:
+@pytest.mark.parametrize(
+    "t,queries,empty_metadata",
+    [
+        (TmdbAsyncMovies(), ["1999 The Matrix", "2003 The Matrix Reloaded", "2003 The Matrix Revolutions"], False),
+        (TmdbAsyncMovies(), ["0000 some-non-existing-movie-title"], True),
+    ],
+)
+def test_generic_parse(t: TmdbAsyncMovies, queries: List[str], empty_metadata: bool) -> None:
     """Tests if generic_parse succeeds and writes results into internal dataframes."""
-    m.generic_parse(_sample_movies)
-    assert m.canon_input.empty is False
-    assert m.belongs_to_collection.empty is False
-    assert m.cast.empty is False
-    assert m.crew.empty is False
-    assert m.genres.empty is False
-    assert m.movie_details.empty is False
-    assert m.production_companies.empty is False
-    assert m.production_countries.empty is False
-    assert m.spoken_languages.empty is False
+    t.generic_parse(queries)
+    assert t.canon_input.empty is False
+    assert t.belongs_to_collection.empty is empty_metadata
+    assert t.cast.empty is empty_metadata
+    assert t.crew.empty is empty_metadata
+    assert t.genres.empty is empty_metadata
+    assert t.movie_details.empty is empty_metadata
+    assert t.production_companies.empty is empty_metadata
+    assert t.production_countries.empty is empty_metadata
+    assert t.spoken_languages.empty is empty_metadata
 
 
-def test_generic_parse_nobackup(m: TmdbAsyncMovies, _sample_movies: List[str]) -> None:
-    """Sames as test_generic_parse_backup, but instead backup_call is set to false."""
-    m.backup_call = False
-    m.generic_parse(_sample_movies)
-    assert m.canon_input.empty is False
-    assert m.belongs_to_collection.empty is False
-    assert m.cast.empty is False
-    assert m.crew.empty is False
-    assert m.genres.empty is False
-    assert m.movie_details.empty is False
-    assert m.production_companies.empty is False
-    assert m.production_countries.empty is False
-    assert m.spoken_languages.empty is False
-
-
-def test_generic_parse_invalid(m: TmdbAsyncMovies, _input_dir: Path, _sample_movies: List[str]) -> None:
-    """Tests generic parse with invalid input that has the right format."""
-    # bad input
-    m.generic_parse(["0000 some-non-existing-movie-title"])
-    assert m.canon_input.empty is False
-    assert m.belongs_to_collection.empty
-    assert m.cast.empty
-    assert m.crew.empty
-    assert m.genres.empty
-    assert m.movie_details.empty
-    assert m.production_companies.empty
-    assert m.production_countries.empty
-    assert m.spoken_languages.empty
-
-
-def test_parse_movie_dirs(m: TmdbAsyncMovies, _input_dir: Path, _output_dir: Path) -> None:
+def test_parse_movie_dirs(t: TmdbAsyncMovies, _input_dir: Path, _output_dir: Path) -> None:
     """Tests parse_movie_dirs for correct canonical input and parsing."""
-    m.parse_movie_dirs(_input_dir)
-    assert set(m.canon_input["year"]) == {1999, 2003}
-    assert set(m.canon_input["title"]) == {
-        "The Matrix",
-        "The Matrix Reloaded",
-        "The Matrix Revolutions",
-    }
+    t.parse_movie_dirs(_input_dir)
+    assert t.canon_input[t.canon_input["title"] == "The Matrix"]["tmdb_id"].iloc[0] == 603
+    assert t.canon_input[t.canon_input["title"] == "The Matrix Reloaded"]["tmdb_id"].iloc[0] == 604
+    assert t.canon_input[t.canon_input["title"] == "The Matrix Revolutions"]["tmdb_id"].iloc[0] == 605
 
-    # bad output path
+    # bad input path
     with pytest.raises(Exception) as exc_info:
-        m.parse_movie_dirs(Path("non-existing-output-dir"))
+        t.parse_movie_dirs(Path("non-existing-output-dir"))
     assert str(exc_info.value) == "Please provide a valid INPUT_PATH!"
 
 
-def test_get_schema_invalid(m: TmdbAsyncMovies) -> None:
+def test_get_schema_invalid(t: TmdbAsyncMovies) -> None:
     """Tests for raising error if schema doesn't exist."""
     with pytest.raises(KeyError) as exc_info:
-        m._get_schema("invalid-schema")
+        t._get_schema("invalid-schema")
     assert str(exc_info.value) == "'Specified SCHEMA is unknown!'"
+
+
+@pytest.mark.parametrize("execution_number", range(10))
+def test_async_order(_sample_movies: List[str], execution_number: int):
+    """This test adresses the problem that aiohttp requests return unordered."""
+    t = TmdbAsyncMovies()
+    t.generic_parse(_sample_movies)
+    assert t.canon_input[t.canon_input["title"] == "The Matrix"]["tmdb_id"].iloc[0] == 603
+    assert t.canon_input[t.canon_input["title"] == "The Matrix Reloaded"]["tmdb_id"].iloc[0] == 604
+    assert t.canon_input[t.canon_input["title"] == "The Matrix Revolutions"]["tmdb_id"].iloc[0] == 605
