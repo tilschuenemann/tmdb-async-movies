@@ -78,7 +78,7 @@ def test_search_ids(tt: TmdbAsyncMovies, canon_input: pd.DataFrame, expected_id:
         (TmdbAsyncMovies(), {0}, True, True),  # TMDB ID doesn't exist
         (TmdbAsyncMovies(), {2}, False, True),  # features no collection
         (TmdbAsyncMovies(), {603}, False, False),  # features collection
-        (TmdbAsyncMovies(), {}, True, True),  # empty input
+        (TmdbAsyncMovies(), set(), True, True),  # empty input
     ],
 )
 def test_get_movie_details(
@@ -115,7 +115,7 @@ def test_get_movie_details(
         (TmdbAsyncMovies(), {-1}, True, True),  # TMDB ID can't be negative
         (TmdbAsyncMovies(), {0}, True, True),  # TMDB ID doesn't exist
         (TmdbAsyncMovies(), {603}, False, False),  # valid TMDB ID
-        (TmdbAsyncMovies(), {}, True, True),  # empty input
+        (TmdbAsyncMovies(), set(), True, True),  # empty input
     ],
 )
 def test_get_credits(tt: TmdbAsyncMovies, tmdb_id_set: Set[int], empty_cast: bool, empty_crew: bool) -> None:
@@ -244,7 +244,7 @@ def test_get_schema_invalid(t: TmdbAsyncMovies) -> None:
 
 
 @pytest.mark.parametrize("execution_number", range(10))
-def test_async_order(_sample_movies: List[str], execution_number: int):
+def test_async_order(_sample_movies: List[str], execution_number: int) -> None:
     """This test adresses the problem that aiohttp requests return unordered."""
     t = TmdbAsyncMovies()
     t.generic_parse(_sample_movies)
