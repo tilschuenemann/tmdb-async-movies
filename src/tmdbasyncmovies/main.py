@@ -152,7 +152,6 @@ class TmdbAsyncMovies:
                 session.get(
                     f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.tmdb_api_key}&language={self.language}",
                     ssl=False,
-                    timeout=20,
                 )
                 for tmdb_id in tmdb_ids
             ]
@@ -244,7 +243,6 @@ class TmdbAsyncMovies:
                 session.get(
                     f"https://api.themoviedb.org/3/movie/{tmdb_id}/credits?api_key={self.tmdb_api_key}&language={self.language}",
                     ssl=False,
-                    timeout=20,
                 )
                 for tmdb_id in tmdb_ids
             ]
