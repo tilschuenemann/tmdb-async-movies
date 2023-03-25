@@ -1,5 +1,4 @@
 """tmdbasyncmovies, a Python package to asynchronously scrape movie metadata from the TMDB."""
-
 import asyncio
 import os
 import re
@@ -13,7 +12,8 @@ from typing import Tuple
 import aiohttp
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+from aiohttp_retry import ExponentialRetry
+from aiohttp_retry import RetryClient
 
 
 class TmdbAsyncMovies:
@@ -23,6 +23,8 @@ class TmdbAsyncMovies:
         0: re.compile(r"^(?P<year>\d{4})\s{1}(?P<title>.+)$"),
         1: re.compile(r"^(?P<year>\d{4})\s{1}\-\s{1}(?P<title>.+)$"),
     }
+
+    MAX_RETRIES = 10
 
     def __init__(
         self,
@@ -82,6 +84,29 @@ class TmdbAsyncMovies:
             self.spoken_languages,
         ) = internal_dfs
 
+    async def _request_id(self, retry_client: RetryClient, year: int, title: str) -> pd.DataFrame:
+        params: Dict[str, object] = {}
+        if year == -1:
+            params = {"query": title}
+        else:
+            params = {"query": title, "year": year}
+
+        async with retry_client.get(
+            f"https://api.themoviedb.org/3/search/movie?api_key={self.tmdb_api_key}&language={self.language}&page=1&include_adult={self.include_adult}",
+            params=params,
+            ssl=False,
+            allow_redirects=False,
+        ) as response:
+            if response.status == 200:
+                try:
+                    resp = await response.json()
+                    tmdb_id = resp["results"][0]["id"]
+                except IndexError:
+                    tmdb_id = -1
+            else:
+                tmdb_id = -1
+        return pd.DataFrame({"tmdb_id": [tmdb_id], "url": [str(response.url)]})
+
     async def search_ids(self, canon_input: pd.DataFrame) -> pd.DataFrame:
         """Given a canonical input TMDB IDs are searched.
 
@@ -96,43 +121,81 @@ class TmdbAsyncMovies:
         if canon_input.empty or {"title", "year"}.issubset(canon_input.columns) is False:
             return results
 
-        async with aiohttp.ClientSession() as session:
-            tasks = []
-            for t, y in zip(canon_input["title"], canon_input["year"], strict=True):
-                if y == -1:
-                    params = {"query": t}
-                else:
-                    params = {"query": t, "year": y}
+        session_timeout = aiohttp.ClientTimeout(total=None, sock_connect=5, sock_read=5)
+        client_session = aiohttp.ClientSession(timeout=session_timeout)
+        retry_options = ExponentialRetry(attempts=self.MAX_RETRIES)
+        retry_client = RetryClient(client_session=client_session, retry_options=retry_options)
+        # async with client_session as session:
+        tasks = []
+        for t, y in zip(canon_input["title"], canon_input["year"], strict=True):
+            tasks.append(self._request_id(retry_client, y, t))
 
-                tasks.append(
-                    session.get(
-                        f"https://api.themoviedb.org/3/search/movie?api_key={self.tmdb_api_key}&language={self.language}&page=1&include_adult={self.include_adult}",
-                        params=params,
-                        ssl=False,
-                        timeout=20,
-                    )
-                )
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
 
-            responses = [
-                await f
-                for f in tqdm(
-                    asyncio.as_completed(tasks),
-                    desc="{:<21}".format("searching TMDB ids"),
-                    total=len(tasks),
-                )
-            ]
         for response in responses:
-            if response.status == 200:
-                try:
-                    resp = await response.json()
-                    tmdb_id = resp["results"][0]["id"]
-                except IndexError:
-                    tmdb_id = -1
-            else:
-                tmdb_id = -1
-
-            results = pd.concat([results, pd.DataFrame({"tmdb_id": [tmdb_id], "url": [str(response.url)]})])
+            results = pd.concat([results, response])
         return results.reset_index(drop=True)
+
+    async def _request_details(self, retry_client: RetryClient, tmdb_id: int) -> None:
+
+        async with retry_client.get(
+            f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.tmdb_api_key}&language={self.language}",
+            ssl=False,
+            allow_redirects=False,
+        ) as response:
+            if response.status == 200:
+                resp = await response.json()
+                tmdb_id = resp["id"]
+
+                if resp["belongs_to_collection"] is not None:
+                    belongs_to_collection = pd.json_normalize(
+                        resp["belongs_to_collection"],
+                        record_prefix="belongs_to_collection.",
+                    ).add_prefix("belongs_to_collection.")
+                    belongs_to_collection["tmdb_id"] = tmdb_id
+                    resp["belongs_to_collection"] = None
+                else:
+                    belongs_to_collection = pd.DataFrame()
+                self.belongs_to_collection = pd.concat(
+                    [self.belongs_to_collection, belongs_to_collection],
+                    ignore_index=True,
+                )
+
+                genres = pd.json_normalize(resp["genres"]).add_prefix("genres.")
+                genres["tmdb_id"] = tmdb_id
+                resp["genres"] = None
+                self.genres = pd.concat([self.genres, genres], ignore_index=True)
+
+                production_companies = pd.json_normalize(
+                    resp["production_companies"],
+                ).add_prefix("production_companies.")
+                production_companies["tmdb_id"] = tmdb_id
+                resp["production_companies"] = None
+                self.production_companies = pd.concat(
+                    [self.production_companies, production_companies],
+                    ignore_index=True,
+                )
+
+                production_countries = pd.json_normalize(
+                    resp["production_countries"],
+                ).add_prefix("production_countries.")
+                production_countries["tmdb_id"] = tmdb_id
+                resp["production_countries"] = None
+                self.production_countries = pd.concat(
+                    [self.production_countries, production_countries],
+                    ignore_index=True,
+                )
+
+                spoken_languages = pd.json_normalize(resp["spoken_languages"]).add_prefix("spoken_languages.")
+                spoken_languages["tmdb_id"] = tmdb_id
+                resp["spoken_languages"] = None
+                self.spoken_languages = pd.concat([self.spoken_languages, spoken_languages], ignore_index=True)
+
+                resp["tmdb_id"] = resp.pop("id", None)
+
+                movie_details = pd.json_normalize(resp)
+                self.movie_details = self.movie_details.astype({"adult": bool, "video": bool}, errors="ignore")
+                self.movie_details = pd.concat([self.movie_details, movie_details], ignore_index=True)
 
     async def get_movie_details(
         self, tmdb_ids: Set[int]
@@ -147,77 +210,15 @@ class TmdbAsyncMovies:
         """
         tmdb_ids = {t for t in tmdb_ids if t >= 0}
 
-        async with aiohttp.ClientSession() as session:
-            tasks = [
-                session.get(
-                    f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.tmdb_api_key}&language={self.language}",
-                    ssl=False,
-                )
-                for tmdb_id in tmdb_ids
-            ]
-
-            responses = [
-                await f
-                for f in tqdm(
-                    asyncio.as_completed(tasks),
-                    desc="{:<21}".format("getting movie details"),
-                    total=len(tasks),
-                )
-            ]
-            for response in responses:
-                if response.status == 200:
-                    resp = await response.json()
-                    tmdb_id = resp["id"]
-
-                    if resp["belongs_to_collection"] is not None:
-                        belongs_to_collection = pd.json_normalize(
-                            resp["belongs_to_collection"],
-                            record_prefix="belongs_to_collection.",
-                        ).add_prefix("belongs_to_collection.")
-                        belongs_to_collection["tmdb_id"] = tmdb_id
-                        resp["belongs_to_collection"] = None
-                    else:
-                        belongs_to_collection = pd.DataFrame()
-                    self.belongs_to_collection = pd.concat(
-                        [self.belongs_to_collection, belongs_to_collection],
-                        ignore_index=True,
-                    )
-
-                    genres = pd.json_normalize(resp["genres"]).add_prefix("genres.")
-                    genres["tmdb_id"] = tmdb_id
-                    resp["genres"] = None
-                    self.genres = pd.concat([self.genres, genres], ignore_index=True)
-
-                    production_companies = pd.json_normalize(
-                        resp["production_companies"],
-                    ).add_prefix("production_companies.")
-                    production_companies["tmdb_id"] = tmdb_id
-                    resp["production_companies"] = None
-                    self.production_companies = pd.concat(
-                        [self.production_companies, production_companies],
-                        ignore_index=True,
-                    )
-
-                    production_countries = pd.json_normalize(
-                        resp["production_countries"],
-                    ).add_prefix("production_countries.")
-                    production_countries["tmdb_id"] = tmdb_id
-                    resp["production_countries"] = None
-                    self.production_countries = pd.concat(
-                        [self.production_countries, production_countries],
-                        ignore_index=True,
-                    )
-
-                    spoken_languages = pd.json_normalize(resp["spoken_languages"]).add_prefix("spoken_languages.")
-                    spoken_languages["tmdb_id"] = tmdb_id
-                    resp["spoken_languages"] = None
-                    self.spoken_languages = pd.concat([self.spoken_languages, spoken_languages], ignore_index=True)
-
-                    resp["tmdb_id"] = resp.pop("id", None)
-
-                    movie_details = pd.json_normalize(resp)
-                    self.movie_details = self.movie_details.astype({"adult": bool, "video": bool}, errors="ignore")
-                    self.movie_details = pd.concat([self.movie_details, movie_details], ignore_index=True)
+        session_timeout = aiohttp.ClientTimeout(total=None, sock_connect=5, sock_read=5)
+        client_session = aiohttp.ClientSession(timeout=session_timeout)
+        retry_options = ExponentialRetry(attempts=self.MAX_RETRIES)
+        retry_client = RetryClient(client_session=client_session, retry_options=retry_options)
+        # async with client_session as session:
+        tasks = []
+        for tmdb_id in tmdb_ids:
+            tasks.append(self._request_details(retry_client, tmdb_id))
+        await asyncio.gather(*tasks, return_exceptions=True)
         return (
             self.belongs_to_collection,
             self.genres,
@@ -226,6 +227,29 @@ class TmdbAsyncMovies:
             self.spoken_languages,
             self.movie_details,
         )
+
+    async def _request_credits(self, retry_client: RetryClient, tmdb_id: int) -> None:
+
+        async with retry_client.get(
+            f"https://api.themoviedb.org/3/movie/{tmdb_id}/credits?api_key={self.tmdb_api_key}&language={self.language}",
+            ssl=False,
+            allow_redirects=True,
+        ) as response:
+            if response.status == 200:
+                resp = await response.json()
+                tmdb_id = resp["id"]
+
+                cast = pd.json_normalize(resp["cast"]).add_prefix("cast.")
+                cast["tmdb_id"] = tmdb_id
+                resp["cast"] = None
+                self.cast["cast.adult"] = self.cast["cast.adult"].astype(bool, errors="ignore")
+                self.cast = pd.concat([self.cast, cast], ignore_index=True)
+
+                crew = pd.json_normalize(resp["crew"]).add_prefix("crew.")
+                crew["tmdb_id"] = tmdb_id
+                resp["crew"] = None
+                self.crew["crew.adult"] = self.crew["crew.adult"].astype(bool, errors="ignore")
+                self.crew = pd.concat([self.crew, crew], ignore_index=True)
 
     async def get_movie_credits(self, tmdb_ids: Set[int]) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """For a given set of TMDB IDs movie credits are searched, stored and returned.
@@ -238,39 +262,15 @@ class TmdbAsyncMovies:
         """
         tmdb_ids = {t for t in tmdb_ids if t >= 0}
 
-        async with aiohttp.ClientSession() as session:
-            tasks = [
-                session.get(
-                    f"https://api.themoviedb.org/3/movie/{tmdb_id}/credits?api_key={self.tmdb_api_key}&language={self.language}",
-                    ssl=False,
-                )
-                for tmdb_id in tmdb_ids
-            ]
-
-            responses = [
-                await f
-                for f in tqdm(
-                    asyncio.as_completed(tasks),
-                    desc="{:<21}".format("getting movie credits"),
-                    total=len(tasks),
-                )
-            ]
-            for response in responses:
-                if response.status == 200:
-                    resp = await response.json()
-                    tmdb_id = resp["id"]
-
-                    cast = pd.json_normalize(resp["cast"]).add_prefix("cast.")
-                    cast["tmdb_id"] = tmdb_id
-                    resp["cast"] = None
-                    self.cast["cast.adult"] = self.cast["cast.adult"].astype(bool, errors="ignore")
-                    self.cast = pd.concat([self.cast, cast], ignore_index=True)
-
-                    crew = pd.json_normalize(resp["crew"]).add_prefix("crew.")
-                    crew["tmdb_id"] = tmdb_id
-                    resp["crew"] = None
-                    self.crew["crew.adult"] = self.crew["crew.adult"].astype(bool, errors="ignore")
-                    self.crew = pd.concat([self.crew, crew], ignore_index=True)
+        session_timeout = aiohttp.ClientTimeout(total=None, sock_connect=5, sock_read=5)
+        client_session = aiohttp.ClientSession(timeout=session_timeout)
+        retry_options = ExponentialRetry(attempts=self.MAX_RETRIES)
+        retry_client = RetryClient(client_session=client_session, retry_options=retry_options)
+        # async with client_session as session:
+        tasks = []
+        for tmdb_id in tmdb_ids:
+            tasks.append(self._request_credits(retry_client, tmdb_id))
+        await asyncio.gather(*tasks, return_exceptions=True)
 
         return (
             self.cast,
@@ -370,6 +370,20 @@ class TmdbAsyncMovies:
 
         first_pass = self.canon_input.copy()
         first_pass = first_pass.dropna(subset=["title"])
+
+        # n = 100  # chunk row size
+        # list_df = [first_pass[i : i + n] for i in range(0, first_pass.shape[0], n)]
+        # results = pd.DataFrame()
+        # for df in list_df:
+        #     try:
+        #         tmp_result = asyncio.run(self.search_ids(df))
+        #         results = pd.concat([results, tmp_result])
+        #     except TimeoutError:
+        #         tmp_result = asyncio.run(self.search_ids(df))
+        #         results = pd.concat([results, tmp_result])
+
+        # results = results.reset_index(drop=True)
+
         results = asyncio.run(self.search_ids(first_pass))
         self.canon_input = match_results_pass(results, first_pass, self.canon_input, first_pass=True)
 
