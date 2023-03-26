@@ -21,7 +21,7 @@ If you feel like a pattern is missing, feel free to create a [Pull Request](http
 All dataframes types are cast as follows:
 
 ```{eval-rst}
-.. literalinclude:: ../src/tmdbasync/main.py
+.. literalinclude:: ../src/tmdb_async_movies/main.py
    :language: python
-   :pyobject: Tmdb._get_schema
+   :pyobject: TmdbAsyncMovies._get_schema
 ```

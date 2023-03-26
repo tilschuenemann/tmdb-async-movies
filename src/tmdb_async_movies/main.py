@@ -123,7 +123,7 @@ class TmdbAsyncMovies:
           canon_input: dataframe with title and year column
 
         Returns:
-          list of TMDB IDs
+          dataframe with columns tmdb_id, request url
         """
         results = pd.DataFrame(columns=["tmdb_id", "url"])
 
@@ -207,13 +207,14 @@ class TmdbAsyncMovies:
                 self.movie_details = pd.concat([self.movie_details, movie_details], ignore_index=True)
 
     async def get_metadata(self, metadata: str, tmdb_ids: Set[int]) -> None:
-        """For a given set of TMDB IDs movie details are searched, stored and returned.
+        """For a given set of TMDB IDs movie details or credits are searched and stored.
 
         Args:
+          metadata: either 'movie_details' or 'credits'
           tmdb_ids: a set of TMDB IDs
 
-        Returns:
-          dataframes: belongs_to_collection, genres ,production_companies, production_countries ,spoken_languages ,movie_details
+        Raises:
+          KeyError: if metadata is not specified correctly
         """
         if metadata not in ["movie_details", "credits"]:
             raise KeyError("metadata should be one of 'movie_details' or 'credits'")
@@ -264,7 +265,7 @@ class TmdbAsyncMovies:
           output_path: path where files should get written to.
 
         Raises:
-          FileNotFoundError
+          FileNotFoundError: if output_path doesn't exist
         """
         if output_path.exists() is False:
             raise FileNotFoundError("Can't write data as OUTPUT_PATH doesn't exist!")
@@ -384,7 +385,7 @@ class TmdbAsyncMovies:
           queries: list of strings
 
         Raises:
-          FileNotFoundError, if input_path doesn't exist.
+          FileNotFoundError: if input_path doesn't exist.
         """
         if input_path.exists() is False:
             raise FileNotFoundError("Please provide a valid INPUT_PATH!")
@@ -415,7 +416,7 @@ class TmdbAsyncMovies:
           Dictionary containing column-type mapping.
 
         Raises:
-          KeyError, if specified schema is not a valid schema.
+          KeyError: if specified schema is not a valid schema.
         """
         if schema == "canon_input":
             return {

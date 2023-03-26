@@ -6,7 +6,7 @@ from typing import Tuple
 import click
 from click import Context
 
-from tmdbasyncmovies.main import TmdbAsyncMovies
+from tmdb_async_movies.main import TmdbAsyncMovies
 
 
 @click.group()

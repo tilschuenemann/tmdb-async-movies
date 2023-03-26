@@ -7,7 +7,7 @@ from typing import Set
 import pandas as pd
 import pytest
 
-from tmdbasyncmovies.main import TmdbAsyncMovies
+from tmdb_async_movies.main import TmdbAsyncMovies
 
 
 @pytest.fixture

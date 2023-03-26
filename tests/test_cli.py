@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from click.testing import CliRunner
 
-from tmdbasyncmovies.cli import tmdbasyncmovies
+from tmdb_async_movies.cli import tmdbasyncmovies
 
 
 @pytest.fixture

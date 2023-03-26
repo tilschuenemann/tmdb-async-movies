@@ -1,12 +1,6 @@
 # CLI
 
-```{eval-rst}
-.. click:: tmdbasyncmovies.cli:tmdbasyncmovies
-    :prog: tmdbasyncmovies
-    :nested: full
-```
-
-## CLI Examples
+## Examples
 
 Looking up a movie from standard input:
 
@@ -24,7 +18,7 @@ tmdbasyncmovies from_input "1999 The Matrix" "2003 The Matrix Revolutions"
 
 ---
 
-Looking up movies from a movie directory makes the assumption that it's structured like this:
+Looking up movies from a parent directory looks like this - note that both items are folders, not video files!
 
 ```shell
 ls /my/movie/dir
@@ -36,4 +30,12 @@ ls /my/movie/dir
 
 ```shell
 tmdbasyncmovies from_dir /my/movie/dir
+```
+
+## Commands and Options
+
+```{eval-rst}
+.. click:: tmdb_async_movies.cli:tmdbasyncmovies
+    :prog: tmdbasyncmovies
+    :nested: full
 ```
