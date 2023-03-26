@@ -1,6 +1,6 @@
 # Python API
 
 ```{eval-rst}
-.. autoclass:: tmdbasyncmovies.main::TmdbAsyncMovies
+.. autoclass:: tmdb_async_movies.main::TmdbAsyncMovies
   :members:
 ```

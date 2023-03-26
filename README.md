@@ -1,46 +1,65 @@
-# tmdbasyncmovies
+# tmdb-async-movies
 
-[![PyPI](https://img.shields.io/pypi/v/tmdbasyncmovies.svg)][pypi_]
-[![Status](https://img.shields.io/pypi/status/tmdbasyncmovies.svg)][status]
-[![Python Version](https://img.shields.io/pypi/pyversions/tmdbasyncmovies)][python version]
-[![License](https://img.shields.io/pypi/l/tmdbasyncmovies)][license]
+[![PyPI](https://img.shields.io/pypi/v/tmdb_async_movies.svg)][pypi_]
+[![Status](https://img.shields.io/pypi/status/tmdb_async_movies.svg)][status]
+[![Python Version](https://img.shields.io/pypi/pyversions/tmdb_async_movies)][python version]
+[![License](https://img.shields.io/pypi/l/tmdb_async_movies)][license]
 
-[![Read the documentation at https://tmdbasyncmovies.readthedocs.io/](https://img.shields.io/readthedocs/tmdbasyncmovies/latest.svg?label=Read%20the%20Docs)][read the docs]
-[![Tests](https://github.com/tilschuenemann/tmdbasyncmovies/workflows/Tests/badge.svg)][tests]
-[![Codecov](https://codecov.io/gh/tilschuenemann/tmdbasyncmovies/branch/main/graph/badge.svg)][codecov]
+[![Read the documentation at https://tmdb_async_movies.readthedocs.io/](https://img.shields.io/readthedocs/tmdb_async_movies/latest.svg?label=Read%20the%20Docs)][read the docs]
+[![Tests](https://github.com/tilschuenemann/tmdb_async_movies/workflows/Tests/badge.svg)][tests]
+[![Codecov](https://codecov.io/gh/tilschuenemann/tmdb_async_movies/branch/main/graph/badge.svg)][codecov]
 
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)][pre-commit]
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)][black]
 
-[pypi_]: https://pypi.org/project/tmdbasyncmovies/
-[status]: https://pypi.org/project/tmdbasyncmovies/
-[python version]: https://pypi.org/project/tmdbasyncmovies
-[read the docs]: https://tmdbasyncmovies.readthedocs.io/
-[tests]: https://github.com/tilschuenemann/tmdbasyncmovies/actions?workflow=Tests
-[codecov]: https://app.codecov.io/gh/tilschuenemann/tmdbasyncmovies
+[pypi_]: https://pypi.org/project/tmdb_async_movies/
+[status]: https://pypi.org/project/tmdb_async_movies/
+[python version]: https://pypi.org/project/tmdb_async_movies
+[read the docs]: https://tmdb_async_movies.readthedocs.io/
+[tests]: https://github.com/tilschuenemann/tmdb_async_movies/actions?workflow=Tests
+[codecov]: https://app.codecov.io/gh/tilschuenemann/tmdb_async_movies
 [pre-commit]: https://github.com/pre-commit/pre-commit
 [black]: https://github.com/psf/black
 
 ## Features
 
-`tmdbasyncmovies` is an asynchronous utility for fetching bulk movie data from [TMDB](https://www.themoviedb.org/) using movie title and optionally release year. It has both a Python API and a CLI.
+`tmdb-async-movies` is an asynchronous utility for fetching bulk movie data from [TMDB](https://www.themoviedb.org/) using movie title and optionally release year.
 
-It's ready to
+- Designed for bulk usage: Pipe in a list of queries and get results immediately.
+- Blazing fast: Asynchronous calls enable you to get metadata from hundreds of movies in a couple of seconds.
+- Typed: Metadata dataframes are strictly cast so you don't have to do it yourself.
+- Hackable: It's a small project with ~500 LOC.
+- Accessible: It has both a Python API and a CLI.
 
 ## Requirements
 
-You'll need to have a TMDB API key in order to make API requests. Either specify it on initialization of tmdbasyncmovies or add it as environment variable:
+You'll need to have a TMDB API key in order to make API requests.
+
+Default environment variable:
 
 ```bash
 $ export TMDB_API_KEY="your_api_key_here"
 ```
 
+Python:
+
+```python
+from tmdb_async_movies.main import TmdbAsyncMovies
+t = TmdbAsyncMovies(tmdb_api_key="your_api_key_here")
+```
+
+CLI:
+
+```bash
+tmdb-async-movies -t "your_api_key_here" from_input "1999 The Matrix"
+```
+
 ## Installation
 
-You can install _tmdbasyncmovies_ via [pip] from [PyPI]:
+You can install _tmdb-async-movies_ via [pip] from [PyPI]:
 
 ```console
-$ pip install tmdbasyncmovies
+$ pip install tmdb-async-movies
 ```
 
 ## Usage
@@ -55,7 +74,7 @@ To learn more, see the [Contributor Guide].
 ## License
 
 Distributed under the terms of the [MIT license][license],
-_tmdbasyncmovies_ is free and open source software.
+_tmdb_async_movies_ is free and open source software.
 
 ## Issues
 
@@ -69,11 +88,11 @@ This project was generated from [@cjolowicz]'s [Hypermodern Python Cookiecutter]
 [@cjolowicz]: https://github.com/cjolowicz
 [pypi]: https://pypi.org/
 [hypermodern python cookiecutter]: https://github.com/cjolowicz/cookiecutter-hypermodern-python
-[file an issue]: https://github.com/tilschuenemann/tmdbasyncmovies/issues
+[file an issue]: https://github.com/tilschuenemann/tmdb_async_movies/issues
 [pip]: https://pip.pypa.io/
 
 <!-- github-only -->
 
-[license]: https://github.com/tilschuenemann/tmdbasyncmovies/blob/main/LICENSE
-[contributor guide]: https://github.com/tilschuenemann/tmdbasyncmovies/blob/main/CONTRIBUTING.md
-[command-line reference]: https://tmdbasyncmovies.readthedocs.io/en/latest/usage.html
+[license]: https://github.com/tilschuenemann/tmdb_async_movies/blob/main/LICENSE
+[contributor guide]: https://github.com/tilschuenemann/tmdb_async_movies/blob/main/CONTRIBUTING.md
+[command-line reference]: https://tmdb_async_movies.readthedocs.io/en/latest/usage.html
