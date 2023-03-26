@@ -47,84 +47,70 @@ def t() -> TmdbAsyncMovies:
 
 
 @pytest.mark.parametrize(
-    "tt,canon_input,expected_id",
+    "canon_input,expected_id",
     [
-        (TmdbAsyncMovies(), pd.DataFrame({"title": ["The Matrix"], "year": [1999]}), 603),
-        (TmdbAsyncMovies(), pd.DataFrame({"title": ["The Matrix"], "year": [-1]}), 603),
-        (TmdbAsyncMovies(), pd.DataFrame({"title": [""], "year": [-1]}), -1),
-        (TmdbAsyncMovies(), pd.DataFrame({"title": [" "], "year": [-1]}), -1),
-        (TmdbAsyncMovies(), pd.DataFrame(), -1),  # missing title and year columns
+        (pd.DataFrame({"title": ["The Matrix"], "year": [1999]}), 603),
+        (pd.DataFrame({"title": ["The Matrix"], "year": [-1]}), 603),
+        (pd.DataFrame({"title": [""], "year": [-1]}), -1),
+        (pd.DataFrame({"title": [" "], "year": [-1]}), -1),
+        (pd.DataFrame(), -1),  # missing title and year columns
         (
-            TmdbAsyncMovies(),
             pd.DataFrame(columns=["title", "year"]),
             -1,
         ),  # has no records
     ],
 )
-def test_search_ids(tt: TmdbAsyncMovies, canon_input: pd.DataFrame, expected_id: int) -> None:
+def test_search_ids(canon_input: pd.DataFrame, expected_id: int) -> None:
     """Tests for correct handling of canonical input."""
+    t = TmdbAsyncMovies()
     if canon_input.empty is False:
-        result = asyncio.run(tt.search_ids(canon_input))
+        result = asyncio.run(t.search_ids(canon_input))
         assert set(result["tmdb_id"]) == {expected_id}
     else:
-        result = asyncio.run(tt.search_ids(canon_input))
+        result = asyncio.run(t.search_ids(canon_input))
         assert result.empty
 
 
 @pytest.mark.parametrize(
-    "tt,tmdb_id_set,empty_metadata,empty_collection",
+    "tmdb_id_set,empty_metadata,empty_collection",
     [
-        (TmdbAsyncMovies(), {-1}, True, True),  # TMDB ID can't be negative
-        (TmdbAsyncMovies(), {0}, True, True),  # TMDB ID doesn't exist
-        (TmdbAsyncMovies(), {2}, False, True),  # features no collection
-        (TmdbAsyncMovies(), {603}, False, False),  # features collection
-        (TmdbAsyncMovies(), set(), True, True),  # empty input
+        ({-1}, True, True),  # TMDB ID can't be negative
+        ({0}, True, True),  # TMDB ID doesn't exist
+        ({2}, False, True),  # features no collection
+        ({603}, False, False),  # features collection
+        (set(), True, True),  # empty input
     ],
 )
-def test_get_movie_details(
-    tt: TmdbAsyncMovies, tmdb_id_set: Set[int], empty_metadata: bool, empty_collection: bool
-) -> None:
+def test_get_movie_details(tmdb_id_set: Set[int], empty_metadata: bool, empty_collection: bool) -> None:
     """Tests if requests for TMDB IDs are handled correctly and if metadata is set correctly."""
-    (
-        belongs_to_collection,
-        genres,
-        production_companies,
-        production_countries,
-        spoken_languages,
-        movie_details,
-    ) = asyncio.run(tt.get_movie_details(tmdb_id_set))
+    t = TmdbAsyncMovies(tmdb_api_key="860cec2bd4872e01c7800f57d5f7a5ea")
+    assert t.belongs_to_collection.empty
 
-    assert belongs_to_collection.empty is empty_collection
-    assert genres.empty is empty_metadata
-    assert movie_details.empty is empty_metadata
-    assert production_companies.empty is empty_metadata
-    assert production_countries.empty is empty_metadata
-    assert spoken_languages.empty is empty_metadata
+    asyncio.run(t.get_metadata("movie_details", tmdb_id_set))
 
-    assert tt.belongs_to_collection.empty is empty_collection
-    assert tt.genres.empty is empty_metadata
-    assert tt.movie_details.empty is empty_metadata
-    assert tt.production_companies.empty is empty_metadata
-    assert tt.production_countries.empty is empty_metadata
-    assert tt.spoken_languages.empty is empty_metadata
+    assert t.belongs_to_collection.empty is empty_collection
+    assert t.genres.empty is empty_metadata
+    assert t.movie_details.empty is empty_metadata
+    assert t.production_companies.empty is empty_metadata
+    assert t.production_countries.empty is empty_metadata
+    assert t.spoken_languages.empty is empty_metadata
 
 
 @pytest.mark.parametrize(
-    "tt,tmdb_id_set,empty_cast,empty_crew",
+    "tmdb_id_set,empty_cast,empty_crew",
     [
-        (TmdbAsyncMovies(), {-1}, True, True),  # TMDB ID can't be negative
-        (TmdbAsyncMovies(), {0}, True, True),  # TMDB ID doesn't exist
-        (TmdbAsyncMovies(), {603}, False, False),  # valid TMDB ID
-        (TmdbAsyncMovies(), set(), True, True),  # empty input
+        ({-1}, True, True),  # TMDB ID can't be negative
+        ({0}, True, True),  # TMDB ID doesn't exist
+        ({603}, False, False),  # valid TMDB ID
+        (set(), True, True),  # empty input
     ],
 )
-def test_get_credits(tt: TmdbAsyncMovies, tmdb_id_set: Set[int], empty_cast: bool, empty_crew: bool) -> None:
+def test_get_credits(tmdb_id_set: Set[int], empty_cast: bool, empty_crew: bool) -> None:
     """Tests if requests for movie_details are handled correctly and if metadata is set correctly."""
-    cast, crew = asyncio.run(tt.get_movie_credits(tmdb_id_set))
-    assert cast.empty is empty_cast
-    assert crew.empty is empty_crew
-    assert tt.cast.empty is empty_cast
-    assert tt.crew.empty is empty_crew
+    t = TmdbAsyncMovies()
+    asyncio.run(t.get_metadata("credits", tmdb_id_set))
+    assert t.cast.empty is empty_cast
+    assert t.crew.empty is empty_crew
 
 
 @pytest.mark.parametrize(
@@ -203,14 +189,15 @@ def test_write(t: TmdbAsyncMovies, _input_dir: Path, _output_dir: Path, _sample_
 
 
 @pytest.mark.parametrize(
-    "t,queries,empty_metadata",
+    "queries,empty_metadata",
     [
-        (TmdbAsyncMovies(), ["1999 The Matrix", "2003 The Matrix Reloaded", "2003 The Matrix Revolutions"], False),
-        (TmdbAsyncMovies(), ["0000 some-non-existing-movie-title"], True),
+        (["1999 The Matrix", "2003 The Matrix Reloaded", "2003 The Matrix Revolutions"], False),
+        (["0000 some-non-existing-movie-title"], True),
     ],
 )
 def test_generic_parse(t: TmdbAsyncMovies, queries: List[str], empty_metadata: bool) -> None:
     """Tests if generic_parse succeeds and writes results into internal dataframes."""
+    t = TmdbAsyncMovies()
     t.generic_parse(queries)
     assert t.canon_input.empty is False
     assert t.belongs_to_collection.empty is empty_metadata
