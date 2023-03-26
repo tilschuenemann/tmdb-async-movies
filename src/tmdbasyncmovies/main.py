@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import Dict
 from typing import List
 from typing import Set
-from typing import Tuple
 
 import aiohttp
 import numpy as np
 import pandas as pd
+import tqdm
 from aiohttp_retry import ExponentialRetry
 from aiohttp_retry import RetryClient
 
@@ -23,8 +23,6 @@ class TmdbAsyncMovies:
         0: re.compile(r"^(?P<year>\d{4})\s{1}(?P<title>.+)$"),
         1: re.compile(r"^(?P<year>\d{4})\s{1}\-\s{1}(?P<title>.+)$"),
     }
-
-    MAX_RETRIES = 10
 
     def __init__(
         self,
@@ -84,7 +82,18 @@ class TmdbAsyncMovies:
             self.spoken_languages,
         ) = internal_dfs
 
-    async def _request_id(self, retry_client: RetryClient, year: int, title: str) -> pd.DataFrame:
+    def _init_client_session(self) -> RetryClient:
+        """Sets up a ClientSession with 100 sockets and exponential retry.
+
+        Returns:
+          RetryClient
+        """
+        session_timeout = aiohttp.ClientTimeout(total=None, sock_connect=100, sock_read=100)
+        client_session = aiohttp.ClientSession(timeout=session_timeout)
+        retry_options = ExponentialRetry(attempts=10)
+        return RetryClient(client_session=client_session, retry_options=retry_options)
+
+    async def _request_id(self, retry_client: RetryClient, title: str, year: int) -> pd.DataFrame:
         params: Dict[str, object] = {}
         if year == -1:
             params = {"query": title}
@@ -121,23 +130,23 @@ class TmdbAsyncMovies:
         if canon_input.empty or {"title", "year"}.issubset(canon_input.columns) is False:
             return results
 
-        session_timeout = aiohttp.ClientTimeout(total=None, sock_connect=5, sock_read=5)
-        client_session = aiohttp.ClientSession(timeout=session_timeout)
-        retry_options = ExponentialRetry(attempts=self.MAX_RETRIES)
-        retry_client = RetryClient(client_session=client_session, retry_options=retry_options)
-        # async with client_session as session:
-        tasks = []
-        for t, y in zip(canon_input["title"], canon_input["year"], strict=True):
-            tasks.append(self._request_id(retry_client, y, t))
+        async with self._init_client_session() as retry_client:
+            tasks = []
+            for title, year in zip(canon_input["title"], canon_input["year"], strict=True):
+                tasks.append(self._request_id(retry_client, title, year))
 
-        responses = await asyncio.gather(*tasks, return_exceptions=True)
+            responses = [
+                await f
+                for f in tqdm.tqdm(
+                    asyncio.as_completed(tasks), total=len(tasks), desc="{:<25}".format("recieving tmdb_ids:")
+                )
+            ]
+            for response in responses:
+                results = pd.concat([results, response])
 
-        for response in responses:
-            results = pd.concat([results, response])
         return results.reset_index(drop=True)
 
     async def _request_details(self, retry_client: RetryClient, tmdb_id: int) -> None:
-
         async with retry_client.get(
             f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.tmdb_api_key}&language={self.language}",
             ssl=False,
@@ -197,9 +206,7 @@ class TmdbAsyncMovies:
                 self.movie_details = self.movie_details.astype({"adult": bool, "video": bool}, errors="ignore")
                 self.movie_details = pd.concat([self.movie_details, movie_details], ignore_index=True)
 
-    async def get_movie_details(
-        self, tmdb_ids: Set[int]
-    ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame,]:
+    async def get_metadata(self, metadata: str, tmdb_ids: Set[int]) -> None:
         """For a given set of TMDB IDs movie details are searched, stored and returned.
 
         Args:
@@ -208,32 +215,31 @@ class TmdbAsyncMovies:
         Returns:
           dataframes: belongs_to_collection, genres ,production_companies, production_countries ,spoken_languages ,movie_details
         """
+        if metadata not in ["movie_details", "credits"]:
+            raise KeyError("metadata should be one of 'movie_details' or 'credits'")
+
         tmdb_ids = {t for t in tmdb_ids if t >= 0}
 
-        session_timeout = aiohttp.ClientTimeout(total=None, sock_connect=5, sock_read=5)
-        client_session = aiohttp.ClientSession(timeout=session_timeout)
-        retry_options = ExponentialRetry(attempts=self.MAX_RETRIES)
-        retry_client = RetryClient(client_session=client_session, retry_options=retry_options)
-        # async with client_session as session:
-        tasks = []
-        for tmdb_id in tmdb_ids:
-            tasks.append(self._request_details(retry_client, tmdb_id))
-        await asyncio.gather(*tasks, return_exceptions=True)
-        return (
-            self.belongs_to_collection,
-            self.genres,
-            self.production_companies,
-            self.production_countries,
-            self.spoken_languages,
-            self.movie_details,
-        )
+        async with self._init_client_session() as retry_client:
+            tasks = []
+            for tmdb_id in tmdb_ids:
+                if metadata == "movie_details":
+                    tasks.append(self._request_details(retry_client, tmdb_id))
+                else:
+                    tasks.append(self._request_credits(retry_client, tmdb_id))
+
+            [
+                await f
+                for f in tqdm.tqdm(
+                    asyncio.as_completed(tasks), total=len(tasks), desc="{:<25}".format(f"recieving {metadata}:")
+                )
+            ]
 
     async def _request_credits(self, retry_client: RetryClient, tmdb_id: int) -> None:
-
         async with retry_client.get(
             f"https://api.themoviedb.org/3/movie/{tmdb_id}/credits?api_key={self.tmdb_api_key}&language={self.language}",
             ssl=False,
-            allow_redirects=True,
+            allow_redirects=False,
         ) as response:
             if response.status == 200:
                 resp = await response.json()
@@ -250,32 +256,6 @@ class TmdbAsyncMovies:
                 resp["crew"] = None
                 self.crew["crew.adult"] = self.crew["crew.adult"].astype(bool, errors="ignore")
                 self.crew = pd.concat([self.crew, crew], ignore_index=True)
-
-    async def get_movie_credits(self, tmdb_ids: Set[int]) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """For a given set of TMDB IDs movie credits are searched, stored and returned.
-
-        Args:
-          tmdb_ids: a set of TMDB IDs
-
-        Returns:
-          dataframes: cast, crew
-        """
-        tmdb_ids = {t for t in tmdb_ids if t >= 0}
-
-        session_timeout = aiohttp.ClientTimeout(total=None, sock_connect=5, sock_read=5)
-        client_session = aiohttp.ClientSession(timeout=session_timeout)
-        retry_options = ExponentialRetry(attempts=self.MAX_RETRIES)
-        retry_client = RetryClient(client_session=client_session, retry_options=retry_options)
-        # async with client_session as session:
-        tasks = []
-        for tmdb_id in tmdb_ids:
-            tasks.append(self._request_credits(retry_client, tmdb_id))
-        await asyncio.gather(*tasks, return_exceptions=True)
-
-        return (
-            self.cast,
-            self.crew,
-        )
 
     def write(self, output_path: Path) -> None:
         """Writes all internal tables to output_path.
@@ -371,19 +351,6 @@ class TmdbAsyncMovies:
         first_pass = self.canon_input.copy()
         first_pass = first_pass.dropna(subset=["title"])
 
-        # n = 100  # chunk row size
-        # list_df = [first_pass[i : i + n] for i in range(0, first_pass.shape[0], n)]
-        # results = pd.DataFrame()
-        # for df in list_df:
-        #     try:
-        #         tmp_result = asyncio.run(self.search_ids(df))
-        #         results = pd.concat([results, tmp_result])
-        #     except TimeoutError:
-        #         tmp_result = asyncio.run(self.search_ids(df))
-        #         results = pd.concat([results, tmp_result])
-
-        # results = results.reset_index(drop=True)
-
         results = asyncio.run(self.search_ids(first_pass))
         self.canon_input = match_results_pass(results, first_pass, self.canon_input, first_pass=True)
 
@@ -405,8 +372,8 @@ class TmdbAsyncMovies:
         self.canon_input["tmdb_id"] = self.canon_input["tmdb_id"].fillna(-1).astype(int)
 
         tmdb_ids = set(self.canon_input["tmdb_id"])
-        asyncio.run(self.get_movie_details(tmdb_ids))
-        asyncio.run(self.get_movie_credits(tmdb_ids))
+        asyncio.run(self.get_metadata(metadata="movie_details", tmdb_ids=tmdb_ids))
+        asyncio.run(self.get_metadata(metadata="credits", tmdb_ids=tmdb_ids))
 
         self._assign_types()
 
@@ -426,7 +393,9 @@ class TmdbAsyncMovies:
 
     def _assign_types(self) -> None:
         """Converts all columns in all dataframes to their correct type."""
-        self.canon_input = self.canon_input.astype(self._get_schema("canon_input"))
+        self.canon_input = self.canon_input.astype(
+            self._get_schema("canon_input"),
+        )
         self.cast = self.cast.astype(self._get_schema("cast"))
         self.crew = self.crew.astype(self._get_schema("crew"))
         self.belongs_to_collection = self.belongs_to_collection.astype(self._get_schema("belongs_to_collection"))
