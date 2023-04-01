@@ -127,36 +127,6 @@ class TmdbAsyncMovies:
                 tmdb_id = -1
         return pd.DataFrame({"tmdb_id": [tmdb_id], "url": [str(response.url)]})
 
-    async def search_ids(self, canon_input: pd.DataFrame) -> pd.DataFrame:
-        """Given a canonical input TMDB IDs are searched.
-
-        Args:
-          canon_input: dataframe with title and year column
-
-        Returns:
-          dataframe with columns tmdb_id, request url
-        """
-        results = pd.DataFrame(columns=["tmdb_id", "url"])
-
-        if canon_input.empty or {"title", "year"}.issubset(canon_input.columns) is False:
-            return results
-
-        async with self._init_client_session() as retry_client:
-            tasks = []
-            for title, year in zip(canon_input["title"], canon_input["year"], strict=True):
-                tasks.append(self._request_id(retry_client, title, year))
-
-            responses = [
-                await f
-                for f in tqdm.tqdm(
-                    asyncio.as_completed(tasks), total=len(tasks), desc="{:<25}".format("recieving tmdb_ids:")
-                )
-            ]
-            for response in responses:
-                results = pd.concat([results, response])
-
-        return results.reset_index(drop=True)
-
     async def _request_details(self, retry_client: RetryClient, tmdb_id: int) -> None:
         """Issues an asynchronous request for movie details using TMDB ID.
 
@@ -223,6 +193,64 @@ class TmdbAsyncMovies:
                 self.movie_details = self.movie_details.astype({"adult": bool, "video": bool}, errors="ignore")
                 self.movie_details = pd.concat([self.movie_details, movie_details], ignore_index=True)
 
+    async def _request_credits(self, retry_client: RetryClient, tmdb_id: int) -> None:
+        """Issues an asynchronous request for movie credits using TMDB ID.
+
+        Args:
+        retry_client: RetryClient
+        tmdb_id: TMDB ID
+        """
+        async with retry_client.get(
+            f"https://api.themoviedb.org/3/movie/{tmdb_id}/credits?api_key={self.tmdb_api_key}&language={self.language}",
+            ssl=False,
+            allow_redirects=False,
+        ) as response:
+            if response.status == 200:
+                resp = await response.json()
+                tmdb_id = resp["id"]
+
+                cast = pd.json_normalize(resp["cast"]).add_prefix("cast.")
+                cast["tmdb_id"] = tmdb_id
+                resp["cast"] = None
+                self.cast["cast.adult"] = self.cast["cast.adult"].astype(bool, errors="ignore")
+                self.cast = pd.concat([self.cast, cast], ignore_index=True)
+
+                crew = pd.json_normalize(resp["crew"]).add_prefix("crew.")
+                crew["tmdb_id"] = tmdb_id
+                resp["crew"] = None
+                self.crew["crew.adult"] = self.crew["crew.adult"].astype(bool, errors="ignore")
+                self.crew = pd.concat([self.crew, crew], ignore_index=True)
+
+    async def search_ids(self, canon_input: pd.DataFrame) -> pd.DataFrame:
+        """Given a canonical input TMDB IDs are searched.
+
+        Args:
+          canon_input: dataframe with title and year column
+
+        Returns:
+          dataframe with columns tmdb_id, request url
+        """
+        results = pd.DataFrame(columns=["tmdb_id", "url"])
+
+        if canon_input.empty or {"title", "year"}.issubset(canon_input.columns) is False:
+            return results
+
+        async with self._init_client_session() as retry_client:
+            tasks = []
+            for title, year in zip(canon_input["title"], canon_input["year"], strict=True):
+                tasks.append(self._request_id(retry_client, title, year))
+
+            responses = [
+                await f
+                for f in tqdm.tqdm(
+                    asyncio.as_completed(tasks), total=len(tasks), desc="{:<25}".format("recieving tmdb_ids:")
+                )
+            ]
+            for response in responses:
+                results = pd.concat([results, response])
+
+        return results.reset_index(drop=True)
+
     async def get_metadata(self, metadata: str, tmdb_ids: Set[int]) -> None:
         """For a given set of TMDB IDs movie details or credits are searched and stored.
 
@@ -252,34 +280,6 @@ class TmdbAsyncMovies:
                     asyncio.as_completed(tasks), total=len(tasks), desc="{:<25}".format(f"recieving {metadata}:")
                 )
             ]
-
-    async def _request_credits(self, retry_client: RetryClient, tmdb_id: int) -> None:
-        """Issues an asynchronous request for movie credits using TMDB ID.
-
-        Args:
-          retry_client: RetryClient
-          tmdb_id: TMDB ID
-        """
-        async with retry_client.get(
-            f"https://api.themoviedb.org/3/movie/{tmdb_id}/credits?api_key={self.tmdb_api_key}&language={self.language}",
-            ssl=False,
-            allow_redirects=False,
-        ) as response:
-            if response.status == 200:
-                resp = await response.json()
-                tmdb_id = resp["id"]
-
-                cast = pd.json_normalize(resp["cast"]).add_prefix("cast.")
-                cast["tmdb_id"] = tmdb_id
-                resp["cast"] = None
-                self.cast["cast.adult"] = self.cast["cast.adult"].astype(bool, errors="ignore")
-                self.cast = pd.concat([self.cast, cast], ignore_index=True)
-
-                crew = pd.json_normalize(resp["crew"]).add_prefix("crew.")
-                crew["tmdb_id"] = tmdb_id
-                resp["crew"] = None
-                self.crew["crew.adult"] = self.crew["crew.adult"].astype(bool, errors="ignore")
-                self.crew = pd.concat([self.crew, crew], ignore_index=True)
 
     def write(self, output_path: Path) -> None:
         """Writes all internal tables to output_path.
@@ -328,6 +328,51 @@ class TmdbAsyncMovies:
         canon_input = pd.concat([tmp_input, extract], axis=1)
         return canon_input
 
+    def _match_results_pass(
+        self, results: pd.DataFrame, pass_df: pd.DataFrame, canon_input: pd.DataFrame, first_pass: bool
+    ) -> pd.DataFrame:
+        """Solves the mapping of async requests and the canonical input mapping.
+
+        Takes the query=xxxx&year=xxxx portion of the async lookups, extends the pass df so that it can match those
+        parameters and joins it onto the canon_input, which is returned.
+
+        Args:
+          results:
+          pass_df:
+          canon_input:
+          first_pass: whether this is the first pass
+
+        Returns:
+          df
+        """
+        results["url_match"] = results["url"].str.extract(r".*(&query=.*)$")
+        results["url_match"] = results["url_match"].apply(lambda x: urllib.parse.quote_plus(x))
+
+        if first_pass:
+            pass_df["url_match"] = np.where(
+                pass_df["year"] != -1,
+                "&query=" + pass_df["title"] + "&year=" + pass_df["year"].astype(str),
+                "&query=" + pass_df["title"],
+            )
+        else:
+            pass_df["url_match"] = "&query=" + pass_df["title"]
+        pass_df["url_match"] = pass_df["url_match"].str.replace(" ", "+").apply(lambda x: urllib.parse.quote_plus(x))
+
+        df = pd.merge(pass_df, results, how="left", left_on="url_match", right_on="url_match")[
+            ["title", "year", "tmdb_id"]
+        ]
+
+        if first_pass:
+            tmdb_id_pass = "tmdb_id_first_pass"  # noqa: S105
+        else:
+            tmdb_id_pass = "tmdb_id_second_pass"  # noqa: S105
+
+        df = df.rename(columns={"tmdb_id": tmdb_id_pass})
+        df[tmdb_id_pass] = df[tmdb_id_pass].fillna(-1).astype(int)
+
+        canon_input = pd.merge(canon_input, df[[tmdb_id_pass]], how="left", left_index=True, right_index=True)
+        return canon_input
+
     def generic_parse(self, queries: List[str]) -> None:
         """For a list of given queries, their TMDB IDs will be searched and used to lookup movie details and cast.
 
@@ -336,66 +381,17 @@ class TmdbAsyncMovies:
         """
         self.canon_input = self._extract_queries(queries)
 
-        def match_results_pass(
-            results: pd.DataFrame, pass_df: pd.DataFrame, canon_input: pd.DataFrame, first_pass: bool
-        ) -> pd.DataFrame:
-            """Solves the mapping of async requests and the canonical input mapping.
-
-            Takes the query=xxxx&year=xxxx portion of the async lookups, extends the pass df so that it can match those
-            parameters and joins it onto the canon_input, which is returned.
-
-            Args:
-              results:
-              pass_df:
-              canon_input:
-              first_pass: whether this is the first pass
-
-            Returns:
-              df
-            """
-            results["url_match"] = results["url"].str.extract(r".*(&query=.*)$")
-            results["url_match2"] = results["url_match"].apply(lambda x: urllib.parse.quote_plus(x))
-
-            if first_pass:
-                pass_df["url_match"] = np.where(
-                    pass_df["year"] != -1,
-                    "&query=" + pass_df["title"] + "&year=" + pass_df["year"].astype(str),
-                    "&query=" + pass_df["title"],
-                )
-            else:
-                pass_df["url_match"] = "&query=" + pass_df["title"]
-
-            pass_df["url_match2"] = (
-                pass_df["url_match"].str.replace(" ", "+").apply(lambda x: urllib.parse.quote_plus(x))
-            )
-
-            df = pd.merge(pass_df, results, how="left", left_on="url_match2", right_on="url_match2")[
-                ["title", "year", "tmdb_id"]
-            ]
-
-            if first_pass:
-                tmdb_id_pass = "tmdb_id_first_pass"  # noqa: S105
-            else:
-                tmdb_id_pass = "tmdb_id_second_pass"  # noqa: S105
-
-            df = df.rename(columns={"tmdb_id": tmdb_id_pass})
-            df[tmdb_id_pass] = df[tmdb_id_pass].fillna(-1).astype(int)
-
-            canon_input = pd.merge(canon_input, df[[tmdb_id_pass]], how="left", left_index=True, right_index=True)
-            return canon_input
-
-        first_pass = self.canon_input.copy()
-        first_pass = first_pass.dropna(subset=["title"])
-
-        results = asyncio.run(self.search_ids(first_pass))
-        self.canon_input = match_results_pass(results, first_pass, self.canon_input, first_pass=True)
+        first_pass_df = self.canon_input.copy()
+        first_pass_df = first_pass_df.dropna(subset=["title"])
+        results = asyncio.run(self.search_ids(first_pass_df))
+        self.canon_input = self._match_results_pass(results, first_pass_df, self.canon_input, first_pass=True)
 
         if self.backup_call:
             second_pass = self.canon_input[self.canon_input["tmdb_id_first_pass"] == -1][["year", "title"]].copy()
             second_pass["year"] = -1
             results = asyncio.run(self.search_ids(second_pass))
 
-            self.canon_input = match_results_pass(results, first_pass, self.canon_input, first_pass=False)
+            self.canon_input = self._match_results_pass(results, first_pass_df, self.canon_input, first_pass=False)
             self.canon_input["tmdb_id"] = np.where(
                 self.canon_input["tmdb_id_first_pass"] != -1,
                 self.canon_input["tmdb_id_first_pass"],

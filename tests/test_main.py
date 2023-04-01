@@ -1,6 +1,5 @@
 """Tests for TMDB Async module."""
 import asyncio
-import re
 from pathlib import Path
 from typing import List
 from typing import Set
@@ -143,7 +142,7 @@ def test_initialization(
         assert t.tmdb_api_key == tmdb_api_key
         assert t.include_adult is include_adult
         assert t.language == language
-        assert isinstance(t.naming_convention, re.Pattern)
+        assert t.naming_convention == naming_convention
         assert t.backup_call is backup_call
 
         assert t.canon_input.empty
