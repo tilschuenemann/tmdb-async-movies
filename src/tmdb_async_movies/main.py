@@ -43,13 +43,13 @@ class TmdbAsyncMovies:
         else:
             raise Exception("Can't initialize tmdb, please provider a (proper) TMDB_API_KEY!")
 
-        naming_convention_map = {
+        self.naming_convention_map = {
             0: re.compile(r"^(?P<year>\d{4})\s{1}(?P<title>.+)$"),
             1: re.compile(r"^(?P<year>\d{4})\s{1}\-\s{1}(?P<title>.+)$"),
         }
-        if naming_convention not in naming_convention_map.keys():
+        if naming_convention not in self.naming_convention_map.keys():
             raise Exception("Please provide a proper NAMING_CONVENTION!")
-        self.naming_convention = naming_convention_map[naming_convention]
+        self.naming_convention = naming_convention
 
         self.include_adult = include_adult
         self.language = language
@@ -93,6 +93,18 @@ class TmdbAsyncMovies:
         return RetryClient(client_session=client_session, retry_options=retry_options)
 
     async def _request_id(self, retry_client: RetryClient, title: str, year: int) -> pd.DataFrame:
+        """Issues an asynchronous request for TMDB ID using movie title and year.
+
+        If the response is malformed or the query yields no results, a TMDB ID of -1 will be returned.
+
+        Args:
+          retry_client: RetryClient
+          title: movie title
+          year: movie release year
+
+        Returns:
+          dataframe with columns tmdb_id, request url
+        """
         params: Dict[str, object] = {}
         if year == -1:
             params = {"query": title}
@@ -146,6 +158,12 @@ class TmdbAsyncMovies:
         return results.reset_index(drop=True)
 
     async def _request_details(self, retry_client: RetryClient, tmdb_id: int) -> None:
+        """Issues an asynchronous request for movie details using TMDB ID.
+
+        Args:
+          retry_client: RetryClient
+          tmdb_id: TMDB ID
+        """
         async with retry_client.get(
             f"https://api.themoviedb.org/3/movie/{tmdb_id}?api_key={self.tmdb_api_key}&language={self.language}",
             ssl=False,
@@ -236,6 +254,12 @@ class TmdbAsyncMovies:
             ]
 
     async def _request_credits(self, retry_client: RetryClient, tmdb_id: int) -> None:
+        """Issues an asynchronous request for movie credits using TMDB ID.
+
+        Args:
+          retry_client: RetryClient
+          tmdb_id: TMDB ID
+        """
         async with retry_client.get(
             f"https://api.themoviedb.org/3/movie/{tmdb_id}/credits?api_key={self.tmdb_api_key}&language={self.language}",
             ssl=False,
@@ -290,7 +314,7 @@ class TmdbAsyncMovies:
             )
 
     def _extract_queries(self, queries: List[str]) -> pd.DataFrame:
-        """Transform queries into canonical input.
+        """Transform queries into a canonical input dataframe.
 
         Args:
           queries: list of strings
@@ -299,7 +323,7 @@ class TmdbAsyncMovies:
           dataframe with columns title, year
         """
         tmp_input = pd.DataFrame({"query": queries})
-        extract = tmp_input["query"].str.extract(self.naming_convention)
+        extract = tmp_input["query"].str.extract(self.naming_convention_map[self.naming_convention])
         extract["year"] = extract["year"].fillna(-1).astype(int)
         canon_input = pd.concat([tmp_input, extract], axis=1)
         return canon_input
