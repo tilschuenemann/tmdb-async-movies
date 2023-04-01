@@ -19,11 +19,6 @@ from aiohttp_retry import RetryClient
 class TmdbAsyncMovies:
     """TMDB Async Movies."""
 
-    naming_convention_map = {
-        0: re.compile(r"^(?P<year>\d{4})\s{1}(?P<title>.+)$"),
-        1: re.compile(r"^(?P<year>\d{4})\s{1}\-\s{1}(?P<title>.+)$"),
-    }
-
     def __init__(
         self,
         tmdb_api_key: str | None = None,
@@ -48,9 +43,13 @@ class TmdbAsyncMovies:
         else:
             raise Exception("Can't initialize tmdb, please provider a (proper) TMDB_API_KEY!")
 
-        if naming_convention not in self.naming_convention_map.keys():
+        naming_convention_map = {
+            0: re.compile(r"^(?P<year>\d{4})\s{1}(?P<title>.+)$"),
+            1: re.compile(r"^(?P<year>\d{4})\s{1}\-\s{1}(?P<title>.+)$"),
+        }
+        if naming_convention not in naming_convention_map.keys():
             raise Exception("Please provide a proper NAMING_CONVENTION!")
-        self.naming_convention = self.naming_convention_map[naming_convention]
+        self.naming_convention = naming_convention_map[naming_convention]
 
         self.include_adult = include_adult
         self.language = language
@@ -290,16 +289,28 @@ class TmdbAsyncMovies:
                 float_format="%.3f",
             )
 
+    def _extract_queries(self, queries: List[str]) -> pd.DataFrame:
+        """Transform queries into canonical input.
+
+        Args:
+          queries: list of strings
+
+        Returns:
+          dataframe with columns title, year
+        """
+        tmp_input = pd.DataFrame({"query": queries})
+        extract = tmp_input["query"].str.extract(self.naming_convention)
+        extract["year"] = extract["year"].fillna(-1).astype(int)
+        canon_input = pd.concat([tmp_input, extract], axis=1)
+        return canon_input
+
     def generic_parse(self, queries: List[str]) -> None:
         """For a list of given queries, their TMDB IDs will be searched and used to lookup movie details and cast.
 
         Args:
           queries: list of strings
         """
-        tmp_input = pd.DataFrame({"query": queries})
-        extract = tmp_input["query"].str.extract(self.naming_convention)
-        self.canon_input = pd.concat([tmp_input, extract], axis=1)
-        self.canon_input["year"] = self.canon_input["year"].fillna(-1).astype(int)
+        self.canon_input = self._extract_queries(queries)
 
         def match_results_pass(
             results: pd.DataFrame, pass_df: pd.DataFrame, canon_input: pd.DataFrame, first_pass: bool

@@ -1,5 +1,6 @@
 """Tests for TMDB Async module."""
 import asyncio
+import re
 from pathlib import Path
 from typing import List
 from typing import Set
@@ -142,7 +143,7 @@ def test_initialization(
         assert t.tmdb_api_key == tmdb_api_key
         assert t.include_adult is include_adult
         assert t.language == language
-        assert t.naming_convention == t.naming_convention_map[naming_convention]
+        assert isinstance(t.naming_convention, re.Pattern)
         assert t.backup_call is backup_call
 
         assert t.canon_input.empty
@@ -238,3 +239,15 @@ def test_async_order(_sample_movies: List[str], execution_number: int) -> None:
     assert t.canon_input[t.canon_input["title"] == "The Matrix"]["tmdb_id"].iloc[0] == 603
     assert t.canon_input[t.canon_input["title"] == "The Matrix Reloaded"]["tmdb_id"].iloc[0] == 604
     assert t.canon_input[t.canon_input["title"] == "The Matrix Revolutions"]["tmdb_id"].iloc[0] == 605
+
+
+@pytest.mark.parametrize(
+    "queries,naming_convention",
+    [(["1999 The Matrix"], 0), (["1999 - The Matrix"], 1)],
+)
+def test_naming_conventions(queries: List[str], naming_convention: int) -> None:
+    """This test checks each naming convention for correct extraction."""
+    t = TmdbAsyncMovies(naming_convention=naming_convention)
+    canon_input = t._extract_queries(queries)
+    assert set(canon_input["title"].unique()) == {"The Matrix"}
+    assert set(canon_input["year"].unique()) == {1999}
