@@ -1,23 +1,23 @@
 # tmdb-async-movies
 
-[![PyPI](https://img.shields.io/pypi/v/tmdb_async_movies.svg)][pypi_]
-[![Status](https://img.shields.io/pypi/status/tmdb_async_movies.svg)][status]
-[![Python Version](https://img.shields.io/pypi/pyversions/tmdb_async_movies)][python version]
-[![License](https://img.shields.io/pypi/l/tmdb_async_movies)][license]
+[![PyPI](https://img.shields.io/pypi/v/tmdb-async-movies.svg)][pypi_]
+[![Status](https://img.shields.io/pypi/status/tmdb-async-movies.svg)][status]
+[![Python Version](https://img.shields.io/pypi/pyversions/tmdb-async-movies)][python version]
+[![License](https://img.shields.io/pypi/l/tmdb-async-movies)][license]
 
-[![Read the documentation at https://tmdb_async_movies.readthedocs.io/](https://img.shields.io/readthedocs/tmdb_async_movies/latest.svg?label=Read%20the%20Docs)][read the docs]
-[![Tests](https://github.com/tilschuenemann/tmdb_async_movies/workflows/Tests/badge.svg)][tests]
-[![Codecov](https://codecov.io/gh/tilschuenemann/tmdb_async_movies/branch/main/graph/badge.svg)][codecov]
+[![Read the documentation at https://tmdb-async-movies.readthedocs.io/](https://img.shields.io/readthedocs/tmdb-async-movies/latest.svg?label=Read%20the%20Docs)][read the docs]
+[![Tests](https://github.com/tilschuenemann/tmdb-async-movies/workflows/Tests/badge.svg)][tests]
+[![Codecov](https://codecov.io/gh/tilschuenemann/tmdb-async-movies/branch/main/graph/badge.svg)][codecov]
 
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)][pre-commit]
 [![Black](https://img.shields.io/badge/code%20style-black-000000.svg)][black]
 
-[pypi_]: https://pypi.org/project/tmdb_async_movies/
-[status]: https://pypi.org/project/tmdb_async_movies/
-[python version]: https://pypi.org/project/tmdb_async_movies
-[read the docs]: https://tmdb_async_movies.readthedocs.io/
-[tests]: https://github.com/tilschuenemann/tmdb_async_movies/actions?workflow=Tests
-[codecov]: https://app.codecov.io/gh/tilschuenemann/tmdb_async_movies
+[pypi_]: https://pypi.org/project/tmdb-async-movies/
+[status]: https://pypi.org/project/tmdb-async-movies/
+[python version]: https://pypi.org/project/tmdb-async-movies
+[read the docs]: https://tmdb-async-movies.readthedocs.io/
+[tests]: https://github.com/tilschuenemann/tmdb-async-movies/actions?workflow=Tests
+[codecov]: https://app.codecov.io/gh/tilschuenemann/tmdb-async-movies
 [pre-commit]: https://github.com/pre-commit/pre-commit
 [black]: https://github.com/psf/black
 
@@ -88,11 +88,11 @@ This project was generated from [@cjolowicz]'s [Hypermodern Python Cookiecutter]
 [@cjolowicz]: https://github.com/cjolowicz
 [pypi]: https://pypi.org/
 [hypermodern python cookiecutter]: https://github.com/cjolowicz/cookiecutter-hypermodern-python
-[file an issue]: https://github.com/tilschuenemann/tmdb_async_movies/issues
+[file an issue]: https://github.com/tilschuenemann/tmdb-async-movies/issues
 [pip]: https://pip.pypa.io/
 
 <!-- github-only -->
 
-[license]: https://github.com/tilschuenemann/tmdb_async_movies/blob/main/LICENSE
-[contributor guide]: https://github.com/tilschuenemann/tmdb_async_movies/blob/main/CONTRIBUTING.md
-[command-line reference]: https://tmdb_async_movies.readthedocs.io/en/latest/usage.html
+[license]: https://github.com/tilschuenemann/tmdb-async-movies/blob/main/LICENSE
+[contributor guide]: https://github.com/tilschuenemann/tmdb-async-movies/blob/main/CONTRIBUTING.md
+[command-line reference]: https://tmdb-async-movies.readthedocs.io/en/latest/usage.html
