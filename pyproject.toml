@@ -5,15 +5,15 @@ description = "tmdb_async_movies"
 authors = ["Til Schünemann <til.schuenemann@mailbox.org>"]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/tilschuenemann/tmdbasyncmovies"
-repository = "https://github.com/tilschuenemann/tmdbasyncmovies"
-documentation = "https://tmdbasyncmovies.readthedocs.io"
+homepage = "https://github.com/tilschuenemann/tmdb-async-movies"
+repository = "https://github.com/tilschuenemann/tmdb-async-movies"
+documentation = "https://tmdb-async-movies.readthedocs.io"
 classifiers = [
     "Development Status :: 3 - Alpha",
 ]
 
 [tool.poetry.urls]
-Changelog = "https://github.com/tilschuenemann/tmdbasyncmovies/releases"
+Changelog = "https://github.com/tilschuenemann/tmdb-async-movies/releases"
 
 [tool.poetry.dependencies]
 python = "^3.10"

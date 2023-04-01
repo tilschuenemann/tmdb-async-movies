@@ -4,7 +4,7 @@
 
 The extraction of year and title from an input string relies on a regex pattern. Multiple patterns are already provided.
 
-If you feel like a pattern is missing, feel free to create a [Pull Request](https://github.com/tilschuenemann/tmdbasync/pulls)!
+If you feel like a pattern is missing, feel free to create a [Pull Request](https://github.com/tilschuenemann/tmdb-async-movies/pulls)!
 
 | Naming Convention # | Input                                                                                                                                                   |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |

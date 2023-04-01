@@ -12,9 +12,9 @@ Here is a list of important resources for contributors:
 - [Code of Conduct]
 
 [mit license]: https://opensource.org/licenses/MIT
-[source code]: https://github.com/tilschuenemann/tmdbasyncmovies
-[documentation]: https://tmdbasyncmovies.readthedocs.io/
-[issue tracker]: https://github.com/tilschuenemann/tmdbasyncmovies/issues
+[source code]: https://github.com/tilschuenemann/tmdb-async-movies
+[documentation]: https://tmdb-async-movies.readthedocs.io/
+[issue tracker]: https://github.com/tilschuenemann/tmdb-async-movies/issues
 
 ## How to report a bug
 
@@ -107,7 +107,7 @@ $ nox --session=pre-commit -- install
 It is recommended to open an issue before starting work on anything.
 This will allow a chance to talk it over with the owners and validate your approach.
 
-[pull request]: https://github.com/tilschuenemann/tmdbasyncmovies/pulls
+[pull request]: https://github.com/tilschuenemann/tmdb-async-movies/pulls
 
 <!-- github-only -->
 

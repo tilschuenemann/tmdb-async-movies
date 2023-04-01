@@ -95,4 +95,4 @@ This project was generated from [@cjolowicz]'s [Hypermodern Python Cookiecutter]
 
 [license]: https://github.com/tilschuenemann/tmdb-async-movies/blob/main/LICENSE
 [contributor guide]: https://github.com/tilschuenemann/tmdb-async-movies/blob/main/CONTRIBUTING.md
-[command-line reference]: https://tmdb-async-movies.readthedocs.io/en/latest/usage.html
+[command-line reference]: https://tmdb-async-movies.readthedocs.io/en/latest/cli.html
