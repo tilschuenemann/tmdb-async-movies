@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tmdb_async_movies"
-version = "0.5.0"
+version = "0.1.0"
 description = "tmdb_async_movies"
 authors = ["Til Schünemann <til.schuenemann@mailbox.org>"]
 license = "MIT"
