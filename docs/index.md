@@ -19,5 +19,5 @@ reference
 contributing
 Code of Conduct <codeofconduct>
 License <license>
-Changelog <https://github.com/tilschuenemann/tmdbasyncmovies/releases>
+Changelog <https://github.com/tilschuenemann/tmdb-async-movies/releases>
 ```
