@@ -2061,22 +2061,19 @@ telegram = ["requests"]
 
 [[package]]
 name = "typeguard"
-version = "3.0.2"
+version = "2.13.3"
 description = "Run-time type checker for Python"
 category = "dev"
 optional = false
-python-versions = ">=3.7.4"
+python-versions = ">=3.5.3"
 files = [
-    {file = "typeguard-3.0.2-py3-none-any.whl", hash = "sha256:bbe993854385284ab42fd5bd3bee6f6556577ce8b50696d6cb956d704f286c8e"},
-    {file = "typeguard-3.0.2.tar.gz", hash = "sha256:fee5297fdb28f8e9efcb8142b5ee219e02375509cd77ea9d270b5af826358d5a"},
+    {file = "typeguard-2.13.3-py3-none-any.whl", hash = "sha256:5e3e3be01e887e7eafae5af63d1f36c849aaa94e3a0112097312aabfa16284f1"},
+    {file = "typeguard-2.13.3.tar.gz", hash = "sha256:00edaa8da3a133674796cf5ea87d9f4b4c367d77476e185e80251cc13dfbb8c4"},
 ]
 
-[package.dependencies]
-typing-extensions = {version = ">=4.4.0", markers = "python_version < \"3.11\""}
-
 [package.extras]
-doc = ["packaging", "sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme"]
-test = ["mypy (>=0.991)", "pytest (>=7)"]
+doc = ["sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme"]
+test = ["mypy", "pytest", "typing-extensions"]
 
 [[package]]
 name = "types-requests"
@@ -2276,4 +2273,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "27883588e3fef27ce597ec9dabc084599d4e94250b059f9d5ea34f783848da35"
+content-hash = "5a2e3fe049afda01cf2d22f63ad963c98fd3ae815c1a8abd0507dae763e37d63"
