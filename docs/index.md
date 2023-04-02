@@ -13,6 +13,7 @@ end-before: <!-- github-only -->
 hidden:
 maxdepth: 3
 ---
+index
 cli
 python-api
 reference
