@@ -62,9 +62,9 @@ You can install _tmdb-async-movies_ via [pip] from [PyPI]:
 $ pip install tmdb-async-movies
 ```
 
-## Usage
+## Documentation
 
-Please see the [Command-line Reference] for details.
+Please see the [documentation] for details.
 
 ## Contributing
 
@@ -95,4 +95,4 @@ This project was generated from [@cjolowicz]'s [Hypermodern Python Cookiecutter]
 
 [license]: https://github.com/tilschuenemann/tmdb-async-movies/blob/main/LICENSE
 [contributor guide]: https://github.com/tilschuenemann/tmdb-async-movies/blob/main/CONTRIBUTING.md
-[command-line reference]: https://tmdb-async-movies.readthedocs.io/en/latest/cli.html
+[documentation]: https://tmdb-async-movies.readthedocs.io/en/latest/
