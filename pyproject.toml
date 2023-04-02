@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "tmdb_async_movies"
 version = "0.1.0"
-description = "tmdb_async_movies"
+description = "tmdb-async-movies is an asynchronous utility for fetching bulk movie data from TMDB using movie title and optionally release year."
 authors = ["Til Schünemann <til.schuenemann@mailbox.org>"]
 license = "MIT"
 readme = "README.md"
@@ -11,6 +11,7 @@ documentation = "https://tmdb-async-movies.readthedocs.io"
 classifiers = [
     "Development Status :: 3 - Alpha",
 ]
+keywords = ["tmdb","api","movies","bulk","async","tmdb-api","tmdb-movie","movie","aiohttp","tmdb-async-movies"]
 
 [tool.poetry.urls]
 Changelog = "https://github.com/tilschuenemann/tmdb-async-movies/releases"
