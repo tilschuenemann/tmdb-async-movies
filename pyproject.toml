@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tmdb_async_movies"
-version = "0.1.0"
+version = "0.1.1"
 description = "tmdb-async-movies is an asynchronous utility for fetching bulk movie data from TMDB using movie title and optionally release year."
 authors = ["Til Schünemann <til.schuenemann@mailbox.org>"]
 license = "MIT"
